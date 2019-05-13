@@ -1,0 +1,40 @@
+{
+  "name": "RayMarching",
+  "version": "0.0.00",
+  "private": true,
+  "description": "RayMarching implementation with Typescript and Three.js",
+  "main": "index.js",
+  "dependencies": {
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-router-dom": "^5.0.0",
+    "materialize-css": "^1.0.0",
+    "three": "^0.104.0"
+  },
+  "devDependencies": {
+    "clean-webpack-plugin": "^1.0.0",
+    "html-webpack-plugin": "^3.2.0",
+    "typescript": "^3.4.5",
+    "awesome-typescript-loader": "^5.2.1",
+    "tslint": "^5.16.0",
+    "tslint-react": "^4.0.0",
+    "tslint-webpack-plugin": "^2.0.4",
+    "url-loader": "^1.1.2",
+    "webpack": "^4.31.0",
+    "webpack-cli": "^3.3.2",
+    "webpack-dev-server": "^3.3.1",
+    "@types/react": "^16.8.17",
+    "@types/react-dom": "^16.8.4",
+    "@types/react-router-dom": "^4.3.3",
+    "@types/es6-promise": "^3.3.0"
+  },
+  "scripts": {
+    "start": "webpack-dev-server --open --port 3000",
+    "build": "webpack -p --env production"
+  },
+  "author": "Kay Illner",
+  "contributors": [
+    "Kay Illner <kay.illner@gmail.com>"
+  ],
+  "license": "UNLICENSED"
+}
