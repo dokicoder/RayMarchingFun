@@ -19,6 +19,11 @@ module.exports = env => {
           loader: 'awesome-typescript-loader'
         },
         {
+          test: /\.(frag|vert)$/,
+          exclude: [/node_modules/],
+          loader: 'raw-loader'
+        },
+        {
           test: /\.(png|gif|jpg|svg)$/,
           exclude: [/(node_modules)/],
           use: [

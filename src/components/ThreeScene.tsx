@@ -2,12 +2,18 @@ import React, { Component } from 'react';
 import * as THREE from 'three';
 import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, MeshPhongMaterial, Camera, Matrix4 } from 'three';
 
+import fragmentShader from '../shaders/raymarch.frag';
+import vertexShader from '../shaders/raymarch.vert';
+
+
 let mount: HTMLDivElement = undefined;
 let camera: Camera = undefined;
 let scene: any = undefined;
 let renderer: any = undefined;
 let cube: any = undefined;
 let frameId: any = undefined;
+
+//const sphereSDF = (radius: number) => (pos: THREE.Vector3) => pos.length() - radius;
 
 class IdentityCamera extends Camera {
   /**
@@ -21,29 +27,7 @@ class IdentityCamera extends Camera {
   }
 }
 
-const vertexShader = `
-    varying vec3 _uv; 
-
-    void main() {
-      _uv = position; 
-
-      vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
-      gl_Position = projectionMatrix * modelViewPosition; 
-    }
-  `;
-
-const fragmentShader = `
-uniform vec3 colorA; 
-uniform vec3 colorB; 
-varying vec3 _uv;
-
-void main() {
-  float u = (_uv.x + 1.0) / 2.0;
-  float v = (_uv.y + 1.0) / 2.0;
-
-  gl_FragColor = vec4(1, v, 0, 1);
-}
-`;
+console.log(fragmentShader);
 
 const material = new THREE.ShaderMaterial({
   uniforms: {
@@ -93,8 +77,16 @@ class ThreeScene extends Component<{}, {}> {
     //ADD SCENE
     scene = new Scene();
     //ADD CAMERA
-    camera = new IdentityCamera();
-    //camera.position.z = 4;
+    //camera = new IdentityCamera();
+
+    camera = new THREE.PerspectiveCamera(
+      75,
+      width / height,
+      0.1,
+      1000
+    );
+    camera.position.z = 4;
+
     //ADD RENDERER
     renderer = new WebGLRenderer({ antialias: true });
     renderer.setClearColor('#000000');
