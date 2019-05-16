@@ -31,8 +31,7 @@ console.log(fragmentShader);
 
 const material = new THREE.ShaderMaterial({
   uniforms: {
-    colorB: { type: 'vec3', value: new THREE.Color(0xacb6e5) },
-    colorA: { type: 'vec3', value: new THREE.Color(0x74ebd5) }
+    lightPos: { type: 'vec3', value: new THREE.Vector3(8, 7, -6) },
   },
   fragmentShader,
   vertexShader
@@ -66,6 +65,8 @@ const Plane = () => {
 
   return new THREE.Mesh(geometry, material);
 };
+
+let lP = new THREE.Vector3(8, 7, -6);
 
 class ThreeScene extends Component<{}, {}> {
   constructor(props: {}) {
@@ -103,7 +104,7 @@ class ThreeScene extends Component<{}, {}> {
     // set its position
     pointLight.position.x = 10;
     pointLight.position.y = 50;
-    pointLight.position.z = 130;
+    pointLight.position.z = 120;
 
     // add to the scene
     scene.add(pointLight);
@@ -123,7 +124,12 @@ class ThreeScene extends Component<{}, {}> {
     cancelAnimationFrame(frameId);
   };
   animate = () => {
-    cube.rotation.x += 0.01;
+    lP.x -= 0.2;
+    material.setValues({
+      uniforms: {
+        lightPos: { type: 'vec3', value: lP },
+      }
+    })
     cube.rotation.y += 0.01;
     this.renderScene();
     frameId = window.requestAnimationFrame(this.animate);
@@ -134,7 +140,7 @@ class ThreeScene extends Component<{}, {}> {
   render() {
     return (
       <div
-        style={{ width: '400px', height: '400px' }}
+        style={{ width: '600px', height: '600px' }}
         ref={m => {
           mount = m;
         }}
