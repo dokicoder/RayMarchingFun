@@ -66,6 +66,7 @@ const Plane = () => {
   return new THREE.Mesh(geometry, material);
 };
 
+let arc = 0;
 let lP = new THREE.Vector3(8, 7, -6);
 
 class ThreeScene extends Component<{}, {}> {
@@ -86,7 +87,7 @@ class ThreeScene extends Component<{}, {}> {
       0.1,
       1000
     );
-    camera.position.z = 4;
+    camera.position.z = 40;
 
     //ADD RENDERER
     renderer = new WebGLRenderer({ antialias: true });
@@ -123,14 +124,21 @@ class ThreeScene extends Component<{}, {}> {
   stop = () => {
     cancelAnimationFrame(frameId);
   };
+  // THREE.Vector3(Math.cos(arc) * 6, 7, Math.sin(arc) * -6)
   animate = () => {
-    lP.x -= 0.2;
+    arc += 0.01;
+    //lP.x = 5;
+    //lP.y = 30;
+    //lP.z = arc;
+    lP.x = Math.cos(arc) * 6;
+    lP.y = 4;
+    lP.z = Math.sin(arc) * -6;
     material.setValues({
       uniforms: {
         lightPos: { type: 'vec3', value: lP },
+        //lightPos: { type: 'vec3', value: new THREE.Vector3(8, 3 + arc, -6) },
       }
     })
-    cube.rotation.y += 0.01;
     this.renderScene();
     frameId = window.requestAnimationFrame(this.animate);
   };

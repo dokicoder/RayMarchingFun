@@ -2,16 +2,29 @@ uniform vec3 lightPos;
 varying vec3 _uv;
 varying vec3 pos; 
 
-
 const int MAX_MARCHING_STEPS = 20;
-const float EPSILON = 0.001;
+const float EPSILON = 0.002;
 
-const vec3 eye = vec3(0.0, 0.0, 4.0);
+vec3 eye = vec3(0.0, 0.0, 40.0);
 
 const float radius = 1.0;
 
+float box( vec3 p, vec3 b )
+{
+  vec3 d = abs(p) - b;
+  return length(max(d,0.0))
+         + min(max(d.x,max(d.y,d.z)),0.0); // remove this line for an only partially signed sdf 
+}
+
+float sphere( vec3 p, float r )
+{
+  return length(p) - r;
+}
+
 float sceneSDF(vec3 pos) {
-  return length(pos) - radius;
+  float boxSphere = max( sphere(pos, radius), box(pos, vec3(radius) * 0.8) );
+  float hole = box( pos, vec3(radius * 1.5, radius * 10.5, radius * 2.5) );
+  return boxSphere;
 }
 
 float march(vec3 viewRayDirection, float start, float end) {
@@ -35,12 +48,12 @@ float march(vec3 viewRayDirection, float start, float end) {
   return end;
 }
 
-float C_NORMALIZATION = 1.0 / 8.0;
+float C_NORMALIZATION = 1.0 / 80.0;
 
 vec4 blinn_phong(vec4 diffuse_color, vec4 specular_color,
-				 vec3 position, vec3 normal, vec3 lightPos, float shiny )
+				 vec3 position, vec3 normal, vec3 lightPos, float shiny, vec3 view )
 {
-	 vec3 view = normalize(-position);
+	 //vec3 view = normalize(-position);
 	 vec3 light = normalize(lightPos - position);
 	 vec4 diffuse = diffuse_color * dot(light, normal);
  	 
@@ -64,16 +77,22 @@ vec3 estimateNormal(vec3 p) {
 
 
 void main() {
-
   vec3 viewRay = normalize(_uv - eye);
+
+  mat3 rot = mat3( 0.7220079,  0.2779921,  0.6335810,
+   0.2779921,  0.7220079, -0.6335810,
+  -0.6335810,  0.6335810,  0.4440158 );
+
+  viewRay = rot * viewRay;
+  eye = rot * eye;
 
   float res = march(viewRay, 0.0, 100.0);
 
-   gl_FragColor = vec4(0, 0, 0, 1);
+   gl_FragColor = vec4(1, 1, 0, 1);
 
   if(res < 100.0) {
 
-    vec3 posi = viewRay * res;
+    vec3 posi = eye + viewRay * res;
     vec3 normal = estimateNormal(posi);
 
     //gl_FragColor = vec4(normal * 1.5, 1);
@@ -81,7 +100,7 @@ void main() {
     gl_FragColor = blinn_phong(
       vec4(0.4, 0.9, 0.7, 1.0),
       vec4(1.0, 1.0, 1.0, 1.0),
-			posi, normal, lightPos, 100.0 );  
+			posi, normal, lightPos, 30.0, -viewRay );  
   }  
 
   //float u = (_uv.x + 1.0) / 2.0 + 0.00001 * pos.x;
