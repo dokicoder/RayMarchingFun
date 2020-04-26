@@ -1,0 +1,150 @@
+
+8 ) What is the advantage of collapsing white space?
+
+White spaces are a blank sequence of space characters, which is treated as a single space character in HTML. Because the browser collapses multiple spaces into a single space, you can indent lines of text without worrying about multiple spaces. This enables you to organize the HTML code into a much more readable format.
+
+) Can attribute values be set to anything or are there specific values that they accept?
+
+Some attribute values can be set to only predefined values. Other attributes can accept any numerical value that represents the number of pixels for a size.
+
+16) Does a hyperlink apply to text only?
+
+No, hyperlinks can be used in the text as well as images. That means you can convert an image into a link that will allow users to link to another page when clicked. Surround the image within the <a href=” “>…</a> tag combinations.
+
+19) What are style sheets?
+
+Style sheets enable you to build consistent, transportable, and well-defined style templates. These templates can be linked to several different web pages, making it easy to maintain and change the look and feel of all the web pages within site.
+
+
+29) How do you create a link that will connect to another web page when clicked?
+
+To create hyperlinks, or links that connect to another web page, use the href tag. The general format for this is: <a href=”site”>text</a>
+Replace “site” with the actual page URL that is supposed to be linked to when the text is clicked.
+
+38) How do you create text on a webpage that will allow you to send an email when clicked?
+
+To change text into a clickable link to send email, use the mailto command within the href tag. The format is as follows:
+
+
+########################################################
+
+Was bedeutet es, wenn man sagt, das HTML "Stateless" ist?
+
+Wenn du auf einer Webseite per Klick das Mailprogramm für eine bestimmte Mailadresse oder die Telefon-App mit einer bestimmten Nummer öffnen willst, wie würdest du das machen?
+
+Wenn man einen HTTP-Requests und Responses aufgebaut (grob)?
+
+Header, Body
+
+Was ist collapsing white space und wozu ist es sinnvoll?
+
+White spaces are a blank sequence of space characters, which is treated as a single space character in HTML. Because the browser collapses multiple spaces into a single space, you can indent lines of text without worrying about multiple spaces. This enables you to organize the HTML code into a much more readable format.
+
+Wofür steht CSS?
+
+Was bedeutet "Cascading" in Cascading style sheets?
+
+> What selectors win out in the cascade depends on three factors (these are listed in order of weight — earlier ones will overrule later ones):
+
+> Importance
+> Specificity
+> Source order
+
+Wie kann CSS in eine Webseite eingebunden werden?
+
+<link/>-Tag
+
+Was ist der Unterschied zwischen Inline- und Block-Elementen in HTML-Seiten? Kennst du Beispiele für Elemente, die standardmäßig inline- oder block- angezeigt werden?
+
+Muss ein Div- element immer mit display: block angezeigt werden?
+
+> Nein, der Style kann per CSS überschrieben werden
+
+Wie sind CSS-Regeln aufgebaut? Was ist ein CSS-Selektor?
+
+> eine CSS-Regel besteht aus einem Selektor, geschweiften Klammern und den CSS-Styles, die auf gematchte ELemente angewendet werden sollen.
+
+Wenn mehrere Selektoren ein bestimmtes Element matchen, wie wird entscheiden, wessen Style angewendet wird?
+
+> id vor Class, spezifischere Selektoren vor genrelleren, bei gleichen Selektoren, der, der als als letztes in CSS-Files steht, inline-styles vor allem außer styles, die mit !important erzwungen werden.
+
+
+Wie kann man ein HTML-Element per CSS-Style verstecken? Was ist der Unterschied zwischen beiden Arten?
+
+display: none; und opacitiy: 0;
+
+Der Unterschied ist, dass das Element noch Platz im Layout einnimmt. Es ist also nur bei display: none; möglich, dass sich die Position von Elementen auf der Seite durch das Setzen des Styles verändert
+
+Wie funktioniert das HTML-Display-Attribut? Welche Werte kann es haben?
+
+display: inline, block, inline-block, none
+
+Wie funktioniert das HTML-Position-Attribut? Welche Werte kann es haben?
+
+position: static, relative, absolute, fixed, sticky
+
+Können Elemente aus einem HTM-Containerelement (Parent) herausragen?
+
+Wie kann man verhindern, dass die Teile Elemente, die aus einen Container-Element herausragegen, sichtbar sind?
+
+Was sind Media Queries? Welche kennst du?
+
+<media type><media feature> {
+
+}
+
+// and
+@media (min-width: 700px) and (orientation: landscape) {}
+// or
+@media (min-width: 700px), handheld and (orientation: landscape) {}
+
+selektoren spezifisch zu Gerätetyp, Auflösung, Displaygröße, Screen-Orieintierung, Smartphone-Features...
+
+Wie kann Javascript in eine HTML-Seite eingebettet werden?
+
+direkt? als Datei?
+
+<script src="//cdn.jsdelivr.net/jquery/2.1.4/jquery.min.js"></script>
+
+oder 
+<script>
+...Javascript goes here
+</script>
+
+Nenne Beispiele für neue Teags in HTML5. Warum wurden sie eingesetzt?
+
+<Video> and <Audio> are new tags which are included in HTML5 version. 
+They are mainly used as a replacement for Flash, Silverlight, and similar technologies to play multimedia items.
+
+Was sind "semantische Tags"? Nenne Beispiele.
+
+Tags für Metainformationen, werden von Browsern verstanden und können z.B. für SEO verwendet werden.
+
+<article>, <section> aus HTML 5
+Welche noch?
+
+Was kann man mit Progressive Web Apps machen?
+
+
+
+Was ist Search Engine Optimization?
+
+-> alles, was dafür sorgt, dass man von Suchmaschinen (dank Marktdominanz Google), besser gefunden wird.
+
+Performance, indizierbarkeit, Metainformationen, etc.
+
+Wie kann man WebGL in eine HTML-Seite einbinden?
+
+58) Was für Web Storages gibt es im Browser? (Möglichkeiten)
+
+Two storage types of HTML5 are:
+
+Session Storage:
+
+It stores data of current session only. It means that the data stored in session storage clear automatically when the browser is closed.
+
+Local Storage:
+
+Local storage is another type of HTML5 Web Storage. In local storage, data is not deleted automatically when the current browser window is closed.
+
+Sollte man sicherheitsrelevante Daten eher in der Session oder im LocalStorage speichern?
