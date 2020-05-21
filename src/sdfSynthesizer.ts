@@ -36,15 +36,15 @@ export const fragmentShader = (shapes: string[]) => `
 uniform vec3 lightPos;
 uniform float aspect;
 
+uniform vec3 playerTransform;
+
 varying vec2 _uv;
 varying vec3 pos;
 
-const int MAX_MARCHING_STEPS = 100;
+const int MAX_MARCHING_STEPS = 500;
 const float EPSILON = 0.002;
 
-const float MARCH_MAX_DISTANCE = 100.0;
-
-vec3 eye = vec3(0.0, 0.0, 40.0);
+const float MARCH_MAX_DISTANCE = 1000.0;
 
 const float radius = 1.0;
 
@@ -60,8 +60,14 @@ float sphere( vec3 p, float r )
   return length(p) - r;
 }
 
+vec3 repeat( vec3 p, vec3 c ) {
+  return mod(p,c)-0.5*c;
+}
+
 float sceneSDF(vec3 pos) {
-  float boxSphere = max( sphere(pos, radius), box(pos, vec3(radius) * 0.8) );
+  vec3 repPos = repeat(pos, vec3(7.0, 7.0, 20.0));
+
+  float boxSphere = max( sphere(repPos, radius), box(repPos, vec3(radius) * 0.8) );
   float hole = box( pos, vec3(radius * 1.5, radius * 10.5, radius * 2.5) );
   return boxSphere;
 }
@@ -70,7 +76,7 @@ float march(vec3 viewRayDirection, float start, float end) {
   float depth = start;
 
   for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
-    float dist = sceneSDF(vec3(0.0, 0.0, 40.0) + depth * viewRayDirection);
+    float dist = sceneSDF(playerTransform + depth * viewRayDirection);
 
     if (dist < EPSILON) {
         // We're inside the scene surface!
@@ -116,9 +122,9 @@ vec3 estimateNormal(vec3 p) {
 void main() {
   
   vec2 transformUV = (2.0 * _uv - vec2(1.0, 1.0)) * vec2(aspect, 1.0);
-  vec3 samplingPos = vec3(transformUV, 0); // + vec3(0.0, 0.0, 32.0);
+  vec3 samplingPos = vec3(transformUV, 0) + vec3(0.0, 0.0, 12.0);
 
-  vec3 viewRay = normalize(samplingPos - eye);
+  vec3 viewRay = normalize(samplingPos);
 
   /*
   mat3 rot = mat3( 0.7220079,  0.2779921,  0.6335810,
@@ -126,7 +132,7 @@ void main() {
   -0.6335810,  0.6335810,  0.4440158 );
 
   viewRay = rot * viewRay;
-  eye = rot * eye;
+  playerTransform = rot * playerTransform;
   */
 
   float marchResult = march(viewRay, 0.0, MARCH_MAX_DISTANCE);
@@ -135,7 +141,7 @@ void main() {
   gl_FragColor = vec4(1, 1, 0, 1);
 
   if(marchResult < MARCH_MAX_DISTANCE) {
-    vec3 posi = eye + viewRay * marchResult;
+    vec3 posi = playerTransform + viewRay * marchResult;
     vec3 normal = estimateNormal(posi);
 
     gl_FragColor = blinn_phong(

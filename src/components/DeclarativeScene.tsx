@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
-import { Scene, WebGLRenderer, Camera } from 'three';
+import { Scene, WebGLRenderer, Camera, Vector3 } from 'three';
 
 import { fragmentShader, vertexShader, box, sphere } from '../sdfSynthesizer';
 
@@ -61,7 +61,27 @@ class ThreeScene extends Component<{}, {}> {
     super(props);
   }
 
+  handleKeyDown = ({ key }: KeyboardEvent) => {
+    const offsetMap: { [key: string]: THREE.Vector3 } = {
+      w: new Vector3(0, 0, 1),
+      a: new Vector3(-1, 0, 0),
+      s: new Vector3(0, 0, -1),
+      d: new Vector3(1, 0, 0),
+      q: new Vector3(0, 1, 0),
+      e: new Vector3(0, -1, 0),
+    };
+
+    const offset = offsetMap[key];
+
+    if (offset) {
+      playerTransform.add(offset.multiplyScalar(0.5));
+      console.log('offset applied');
+    }
+  };
+
   componentDidMount() {
+    document.addEventListener('keydown', this.handleKeyDown);
+
     const { clientWidth: width, clientHeight: height } = mount;
 
     aspect = width / height;
@@ -81,7 +101,10 @@ class ThreeScene extends Component<{}, {}> {
 
     this.start();
   }
+
   componentWillUnmount() {
+    document.removeEventListener('keydown', this.handleKeyDown);
+
     this.stop();
     mount.removeChild(renderer.domElement);
   }
@@ -103,7 +126,7 @@ class ThreeScene extends Component<{}, {}> {
       uniforms: {
         lightPos: { type: 'vec3', value: lP },
         aspect: { type: 'float', value: aspect },
-        playerTransform: { type: 'mat4', value: lP },
+        playerTransform: { type: 'vec3', value: playerTransform },
       },
     });
     this.renderScene();
