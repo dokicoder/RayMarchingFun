@@ -5,7 +5,6 @@ import { PerspectiveCamera, Scene, WebGLRenderer, BoxGeometry, Mesh, MeshPhongMa
 import fragmentShader from '../shaders/raymarch.frag';
 import vertexShader from '../shaders/raymarch.vert';
 
-
 let mount: HTMLDivElement = undefined;
 let camera: Camera = undefined;
 let scene: any = undefined;
@@ -34,7 +33,7 @@ const material = new THREE.ShaderMaterial({
     lightPos: { type: 'vec3', value: new THREE.Vector3(8, 7, -6) },
   },
   fragmentShader,
-  vertexShader
+  vertexShader,
 });
 
 const Plane = () => {
@@ -57,7 +56,7 @@ const Plane = () => {
     1.0,
     -1.0,
     -1.0,
-    1.0
+    1.0,
   ]);
 
   const geometry = new THREE.BufferGeometry().addAttribute('position', new THREE.BufferAttribute(vertices, 3));
@@ -81,12 +80,7 @@ class ThreeScene extends Component<{}, {}> {
     //ADD CAMERA
     //camera = new IdentityCamera();
 
-    camera = new THREE.PerspectiveCamera(
-      75,
-      width / height,
-      0.1,
-      1000
-    );
+    camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     camera.position.z = 40;
 
     //ADD RENDERER
@@ -94,10 +88,7 @@ class ThreeScene extends Component<{}, {}> {
     renderer.setClearColor('#000000');
     renderer.setSize(width, height);
     mount.appendChild(renderer.domElement);
-    //ADD CUBE
-    const geometry = new BoxGeometry(1, 1, 1);
-    const material = new MeshPhongMaterial({ color: '#ff9900', shininess: 20, specular: '#ffffff' });
-    cube = new Mesh(geometry, material);
+
     scene.add(Plane());
 
     const pointLight = new THREE.PointLight(0xffffff);
@@ -137,8 +128,8 @@ class ThreeScene extends Component<{}, {}> {
       uniforms: {
         lightPos: { type: 'vec3', value: lP },
         //lightPos: { type: 'vec3', value: new THREE.Vector3(8, 3 + arc, -6) },
-      }
-    })
+      },
+    });
     this.renderScene();
     frameId = window.requestAnimationFrame(this.animate);
   };

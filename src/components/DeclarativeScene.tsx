@@ -1,19 +1,6 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
-import {
-  PerspectiveCamera,
-  Scene,
-  WebGLRenderer,
-  BoxGeometry,
-  Mesh,
-  MeshPhongMaterial,
-  Camera,
-  Matrix4,
-  Vector3,
-} from 'three';
-
-//import fragmentShader from '../shaders/raymarch.frag';
-//import vertexShader from '../shaders/raymarch.vert';
+import { Scene, WebGLRenderer, Camera } from 'three';
 
 import { fragmentShader, vertexShader, box, sphere } from '../sdfSynthesizer';
 
@@ -26,7 +13,7 @@ let frameId: any = undefined;
 
 const sceneDef = fragmentShader([
   //sphere(0.4, new THREE.Vector3(0, 0, 0)),
-  box(new THREE.Vector3(0, 0, -10), new THREE.Vector3(0.001, 0.001, 0.001)),
+  box(new THREE.Vector3(0, 0, -100), new THREE.Vector3(0.0001, 0.0001, 0.0001)),
 ]);
 
 console.log(sceneDef);
@@ -62,10 +49,7 @@ const Plane = () => {
     1.0,
   ]);
 
-  const geometry = new THREE.BufferGeometry().addAttribute(
-    'position',
-    new THREE.BufferAttribute(vertices, 3)
-  );
+  const geometry = new THREE.BufferGeometry().addAttribute('position', new THREE.BufferAttribute(vertices, 3));
   //const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
   return new THREE.Mesh(geometry, material);

@@ -1,5 +1,5 @@
 import React from 'react';
-import ThreeScene from './ThreeScene';
+import ThreeScene from './DeclarativeScene';
 
 const App = () => (
   <div>
