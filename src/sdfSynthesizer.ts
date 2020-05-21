@@ -32,8 +32,6 @@ void main() {
 }
 `;
 
-const boxSdf()
-
 export const fragmentShader = (shapes: string[]) => `
 uniform vec3 lightPos;
 varying vec3 _uv;
