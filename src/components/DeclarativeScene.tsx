@@ -7,7 +7,7 @@ import { fragmentShader, vertexShader, box, sphere } from '../sdfSynthesizer';
 let mount: HTMLDivElement = undefined;
 let camera: Camera = undefined;
 let scene: any = undefined;
-let renderer: any = undefined;
+let renderer: WebGLRenderer | undefined = undefined;
 let cube: any = undefined;
 let frameId: any = undefined;
 
@@ -26,30 +26,25 @@ const material = new THREE.ShaderMaterial({
   vertexShader,
 });
 
+const v0 = [-1.0, -1.0, 1.0];
+const uv0 = [0.0, 0.0];
+const v1 = [1.0, -1.0, 1.0];
+const uv1 = [1.0, 0.0];
+const v2 = [1.0, 1.0, 1.0];
+const uv2 = [1.0, 1.0];
+const v3 = [-1.0, 1.0, 1.0];
+const uv3 = [0.0, 1.0];
+
 const Plane = () => {
-  const vertices = new Float32Array([
-    -1.0,
-    -1.0,
-    1.0,
-    1.0,
-    -1.0,
-    1.0,
-    1.0,
-    1.0,
-    1.0,
+  const vertices = new Float32Array(
+    [...v0, ...v1, ...v2, ...v2, ...v3, ...v0].map((x, idx) => x * 0.9) // + (idx % 3 === 0 ? 0.2 : 0))
+  );
 
-    1.0,
-    1.0,
-    1.0,
-    -1.0,
-    1.0,
-    1.0,
-    -1.0,
-    -1.0,
-    1.0,
-  ]);
+  const uvs = new Float32Array([...uv0, ...uv1, ...uv2, ...uv2, ...uv3, ...uv0]);
 
-  const geometry = new THREE.BufferGeometry().addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  const geometry = new THREE.BufferGeometry()
+    .addAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    .addAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   //const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
   return new THREE.Mesh(geometry, material);
@@ -57,6 +52,7 @@ const Plane = () => {
 
 let arc = 0;
 let lP = new THREE.Vector3(8, 7, -6);
+const playerTransform = new THREE.Vector3(8, 7, -6);
 
 class ThreeScene extends Component<{}, {}> {
   constructor(props: {}) {
@@ -65,15 +61,15 @@ class ThreeScene extends Component<{}, {}> {
 
   componentDidMount() {
     const { clientWidth: width, clientHeight: height } = mount;
+    console.log(width, height);
     //ADD SCENE
     scene = new Scene();
 
     camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.z = 40;
 
     //ADD RENDERER
     renderer = new WebGLRenderer({ antialias: true });
-    renderer.setClearColor('#000000');
+    renderer.setClearColor('#880400');
     renderer.setSize(width, height);
     mount.appendChild(renderer.domElement);
 
@@ -102,6 +98,7 @@ class ThreeScene extends Component<{}, {}> {
     material.setValues({
       uniforms: {
         lightPos: { type: 'vec3', value: lP },
+        playerTransform: { type: 'mat4', value: lP },
       },
     });
     this.renderScene();
@@ -111,14 +108,7 @@ class ThreeScene extends Component<{}, {}> {
     renderer.render(scene, camera);
   };
   render() {
-    return (
-      <div
-        style={{ width: '600px', height: '600px' }}
-        ref={m => {
-          mount = m;
-        }}
-      />
-    );
+    return <div style={{ width: '1200px', height: '1200px' }} ref={(m) => (mount = m)} />;
   }
 }
 

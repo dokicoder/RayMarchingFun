@@ -23,10 +23,10 @@ export const difference = (shape1: string, shape2: string) => {
 };
 
 export const vertexShader: string = `
-varying vec3 _uv;
+varying vec2 _uv;
 
 void main() {
-  _uv = position; 
+  _uv = uv; 
 
   gl_Position = vec4(position, 1.0); 
 }
@@ -34,11 +34,13 @@ void main() {
 
 export const fragmentShader = (shapes: string[]) => `
 uniform vec3 lightPos;
-varying vec3 _uv;
-varying vec3 pos; 
+varying vec2 _uv;
+varying vec3 pos;
 
 const int MAX_MARCHING_STEPS = 100;
 const float EPSILON = 0.002;
+
+const float MARCH_MAX_DISTANCE = 100.0;
 
 vec3 eye = vec3(0.0, 0.0, 40.0);
 
@@ -66,7 +68,7 @@ float march(vec3 viewRayDirection, float start, float end) {
   float depth = start;
 
   for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
-    float dist = sceneSDF(eye + depth * viewRayDirection);
+    float dist = sceneSDF(vec3(0.0, 0.0, 40.0) + depth * viewRayDirection);
 
     if (dist < EPSILON) {
         // We're inside the scene surface!
@@ -99,48 +101,45 @@ vec4 blinn_phong(vec4 diffuse_color, vec4 specular_color,
 	 return diffuse + specular;
 }
 
-
 vec3 estimateNormal(vec3 p) {
     return normalize(
       vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
+        sceneSDF(vec3(p.x + EPSILON, p.y, p.z))  - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
+        sceneSDF(vec3(p.x, p.y + EPSILON, p.z))  - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
         sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
       )
     );
 }
 
-
 void main() {
-  vec3 viewRay = normalize(_uv - eye);
+  
+  vec3 uv = vec3(_uv, 0); // + vec3(0.0, 0.0, 32.0);
+
+  vec3 viewRay = normalize(uv - eye);
 
   /*
   mat3 rot = mat3( 0.7220079,  0.2779921,  0.6335810,
    0.2779921,  0.7220079, -0.6335810,
   -0.6335810,  0.6335810,  0.4440158 );
+
+  viewRay = rot * viewRay;
+  eye = rot * eye;
   */
 
-  //viewRay = rot * viewRay;
-  //eye = rot * eye;
+  float marchResult = march(viewRay, 0.0, MARCH_MAX_DISTANCE);
 
-  float res = march(viewRay, 0.0, 100.0);
+  // clear color is applied of marching does not find a hit distance
+  gl_FragColor = vec4(1, 1, 0, 1);
 
-   gl_FragColor = vec4(1, 1, 0, 1);
-
-  if(res < 100.0) {
-    vec3 posi = eye + viewRay * res;
+  if(marchResult < MARCH_MAX_DISTANCE) {
+    vec3 posi = eye + viewRay * marchResult;
     vec3 normal = estimateNormal(posi);
 
-    //gl_FragColor = vec4(normal * 1.5, 1);
-  
     gl_FragColor = blinn_phong(
-      vec4(0.4, 0.9, 0.7, 1.0),
+      vec4(0.8, 0.3, 0.7, 1.0),
       vec4(1.0, 1.0, 1.0, 1.0),
 			posi, normal, lightPos, 30.0, -viewRay );  
   }  
 
-  //float u = (_uv.x + 1.0) / 2.0 + 0.00001 * pos.x;
-  //float v = (_uv.y + 1.0) / 2.0;
-
-  //gl_FragColor = vec4(u, v, 0, 1);
+  gl_FragColor = vec4(0.0, uv.x > 0.5 ? 0.0 : 1.0, 0.0, 1.0);
 }`;
