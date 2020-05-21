@@ -11,6 +11,8 @@ let renderer: WebGLRenderer | undefined = undefined;
 let cube: any = undefined;
 let frameId: any = undefined;
 
+let aspect = 1;
+
 const sceneDef = fragmentShader([
   //sphere(0.4, new THREE.Vector3(0, 0, 0)),
   box(new THREE.Vector3(0, 0, -100), new THREE.Vector3(0.0001, 0.0001, 0.0001)),
@@ -61,11 +63,13 @@ class ThreeScene extends Component<{}, {}> {
 
   componentDidMount() {
     const { clientWidth: width, clientHeight: height } = mount;
-    console.log(width, height);
+
+    aspect = width / height;
+
     //ADD SCENE
     scene = new Scene();
 
-    camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
 
     //ADD RENDERER
     renderer = new WebGLRenderer({ antialias: true });
@@ -98,6 +102,7 @@ class ThreeScene extends Component<{}, {}> {
     material.setValues({
       uniforms: {
         lightPos: { type: 'vec3', value: lP },
+        aspect: { type: 'float', value: aspect },
         playerTransform: { type: 'mat4', value: lP },
       },
     });
@@ -108,7 +113,7 @@ class ThreeScene extends Component<{}, {}> {
     renderer.render(scene, camera);
   };
   render() {
-    return <div style={{ width: '1200px', height: '1200px' }} ref={(m) => (mount = m)} />;
+    return <div style={{ width: '2000px', height: '1200px' }} ref={(m) => (mount = m)} />;
   }
 }
 
