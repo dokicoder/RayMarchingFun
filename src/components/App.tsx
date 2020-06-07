@@ -1,10 +1,46 @@
 import React from 'react';
-import ThreeScene from './DeclarativeScene';
+import { BrowserRouter, Route, Link, Switch, Redirect } from 'react-router-dom';
+import RaymarchingTestScene from './DeclarativeScene';
+
+const Menu: React.FC = () => {
+  return (
+    <>
+      <Link
+        to="/raymarchingTest"
+        style={{
+          backgroundColor: '#203010',
+          padding: 10,
+          margin: 5,
+        }}
+      >
+        Raymarching Test
+      </Link>
+      <Link
+        to="/metaballs"
+        style={{
+          backgroundColor: '#203010',
+          padding: 10,
+          margin: 5,
+        }}
+      >
+        Metaballs
+      </Link>
+    </>
+  );
+};
 
 const App = () => (
-  <div>
-    <ThreeScene />
-  </div>
+  <BrowserRouter>
+    <Menu />
+    <Switch>
+      <Route path="/raymarchingTest">
+        <RaymarchingTestScene />
+      </Route>
+      <Route path="*">
+        <Redirect to="/" />
+      </Route>
+    </Switch>
+  </BrowserRouter>
 );
 
 export default App;

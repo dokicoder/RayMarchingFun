@@ -5,10 +5,10 @@
   "description": "RayMarching implementation with Typescript and Three.js",
   "main": "index.js",
   "dependencies": {
+    "materialize-css": "1.0.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-router-dom": "5.2.0",
-    "materialize-css": "1.0.0",
+    "react-router-dom": "^5.2.0",
     "three": "0.116.1"
   },
   "devDependencies": {

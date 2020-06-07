@@ -51,6 +51,9 @@ module.exports = (env) => {
     optimization: {
       minimize: env === 'production',
     },
+    devServer: {
+      historyApiFallback: true,
+    },
     plugins: [
       new TSLintPlugin({
         files: ['./src/**/*.ts{,x}'],
