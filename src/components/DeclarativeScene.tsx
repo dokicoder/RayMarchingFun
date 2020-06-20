@@ -115,6 +115,7 @@ class ThreeScene extends Component<{}, {}> {
   };
   stop = () => {
     cancelAnimationFrame(frameId);
+    frameId = undefined;
   };
   // THREE.Vector3(Math.cos(arc) * 6, 7, Math.sin(arc) * -6)
   animate = () => {

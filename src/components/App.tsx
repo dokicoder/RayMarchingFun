@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Route, Link, Switch, Redirect } from 'react-router-dom';
 import RaymarchingTestScene from './DeclarativeScene';
+import MetaballsScene from './MetaballsScene';
 
 const Menu: React.FC = () => {
   return (
@@ -36,8 +37,11 @@ const App = () => (
       <Route path="/raymarchingTest">
         <RaymarchingTestScene />
       </Route>
+      <Route path="/metaballs">
+        <MetaballsScene />
+      </Route>
       <Route path="*">
-        <Redirect to="/" />
+        <Redirect to="/raymarchingTest" />
       </Route>
     </Switch>
   </BrowserRouter>
