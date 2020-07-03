@@ -44,6 +44,7 @@ const fragmentShader = `
 uniform float iTime;
 uniform float aspect;
 uniform float metaBallBlendValue;
+uniform float cameraRotationOffset;
 
 varying vec2 _uv;
 
@@ -57,7 +58,7 @@ float saturate (in float v) { return clamp (v, .0, 1.); }
 // ray-marching, SDF stuff /////////////////////////////////////////////////////
 
 float sphereSdf (in vec3 p, in float r) {
-    return length (p) - r;
+    return length(p) - r;
 }
 
 float opCombine (in float d1, in float d2, in float r) {
@@ -90,6 +91,39 @@ float metaBalls (in vec3 p) {
     float metaBalls = opCombine (ball1, ball2, metaBallBlendValue);
 
     return metaBalls;
+}
+
+vec3 metaBallsColor (in vec3 p) {
+  float time = 0.4 + iTime * 0.2;
+
+  float r1 = 0.2;
+  float r2 = 0.3;
+
+  float t = 2. * 2.0; // TODO: time;
+  vec3 spherePos1 = vec3 (-.4*cos(t), .1, -.3*sin(t));
+  vec3 spherePos2 = vec3 (.2, .2*cos(t), .3*sin(t));
+
+  vec3 sphereColor1 = vec3(0.4, 1.0, 0.0);
+  vec3 sphereColor2 = vec3 (1.0, 0.04, 0.6);
+
+  /*
+  if(length(p - spherePos1) <= r1) {
+    return sphereColor1;
+  }
+  if(length(p - spherePos2) <= r2) {
+    return sphereColor2;
+  }
+  */
+
+  vec3 spheresLine = spherePos2 - spherePos1;
+  float spheresDist = length(spheresLine);
+  vec3 spheresDir = normalize(spheresLine);
+  vec3 relativePoint = p - spherePos1;
+  //float blend = (dot(relativePoint, spheresDir) - r1) / (spheresDist - r2);
+  float blend = dot(relativePoint, spheresDir) / spheresDist;
+
+
+  return mix(sphereColor1, sphereColor2, clamp(blend, 0.0, 1.0));
 }
 
 float map (in vec3 p) {
@@ -158,13 +192,13 @@ float shadow (in vec3 p, in vec3 lPos) {
     return dist < lDist ? .1 : 1.;
 }
 
-vec3 shade (in vec3 ro, in vec3 rd, in float d) {
+vec3 shade (in vec3 ro, in vec3 rd, in float d, in vec3 albedo) {
     vec3 p = ro + d * rd;
     vec3 nor = normal (p);
 
     // "material" hard-coded for the moment 
     float mask = smoothstep (1., .05, 30.*cos (50.*p.y)+sin (50.*p.x)+ cos (50.*p.z));
-    vec3 albedo = vec3(0.4,1.0,0.0);
+    //vec3 albedo = vec3(0.4,1.0,0.0);
     float metallic = .5;
     float roughness = .45;
     float ao = 1.;
@@ -252,7 +286,7 @@ void main () {
     //float t = 0.1 * iTime + 5.;
     float t = 0.1 * 0.3 + 5.;
     
-    float angle = radians (t * 100.0);
+    float angle = radians (t * 100.0 + cameraRotationOffset);
     float dist = 1.25;
     vec3 ro = vec3 (dist * cos (angle), 0.5, dist * -sin (angle));
     vec3 aim = vec3 (.0);
@@ -263,7 +297,10 @@ void main () {
     vec3 p = ro + d * rd;
     
     vec3 n = normal (p);
-    vec3 col = shade (ro, rd, d);
+
+    vec3 albedo = metaBallsColor(p);
+
+    vec3 col = shade (ro, rd, d, albedo);
     col = mix (col, vec3 (.0), pow (1. - 1. / d, 5.));
 
     col = col / (2. + col);
@@ -277,6 +314,7 @@ interface MetaballUniforms {
   aspect: IUniform;
   iTime: IUniform;
   metaBallBlendValue: IUniform;
+  cameraRotationOffset: IUniform;
 }
 
 let mount: HTMLDivElement = undefined;
@@ -293,6 +331,7 @@ const uniforms: MetaballUniforms = {
   iTime: { value: clock.elapsedTime },
   aspect: { value: aspect },
   metaBallBlendValue: { value: 0.5 },
+  cameraRotationOffset: { value: 0 },
 };
 
 const material = new THREE.ShaderMaterial({
@@ -396,13 +435,23 @@ const MetaballScene: React.FC = () => {
     <>
       <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />
       {/* TODO: debounce */}
-      <Slider
-        value={stateUniforms.metaBallBlendValue.value}
-        update={(value) => {
-          dispatch({ type: 'metaBallBlendValue', value });
-        }}
-        label="Metaball blend factor"
-      />
+      <div style={{ width: '1300px' }}>
+        <Slider
+          value={stateUniforms.metaBallBlendValue.value}
+          update={(value) => {
+            dispatch({ type: 'metaBallBlendValue', value });
+          }}
+          label="Metaball blend factor"
+        />
+        <Slider
+          value={stateUniforms.cameraRotationOffset.value}
+          range={[0, 360]}
+          update={(value) => {
+            dispatch({ type: 'cameraRotationOffset', value });
+          }}
+          label="Camera rotation offset"
+        />
+      </div>
     </>
   );
 };
