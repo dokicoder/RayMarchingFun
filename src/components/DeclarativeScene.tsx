@@ -2,21 +2,17 @@ import React, { Component } from 'react';
 import * as THREE from 'three';
 import { Scene, WebGLRenderer, Camera, Vector3 } from 'three';
 
-import { fragmentShader, vertexShader, box, sphere } from '../sdfSynthesizer';
+import { fragmentShader, vertexShader, box } from '../sdfSynthesizer';
 
 let mount: HTMLDivElement = undefined;
 let camera: Camera = undefined;
-let scene: any = undefined;
+let scene: THREE.Scene = undefined;
 let renderer: WebGLRenderer | undefined = undefined;
-let cube: any = undefined;
-let frameId: any = undefined;
+let frameId: number = undefined;
 
 let aspect = 1;
 
-const sceneDef = fragmentShader([
-  //sphere(0.4, new THREE.Vector3(0, 0, 0)),
-  box(new THREE.Vector3(0, 0, -100), new THREE.Vector3(0.0001, 0.0001, 0.0001)),
-]);
+const sceneDef = fragmentShader([box(new THREE.Vector3(0, 0, -100), new THREE.Vector3(0.0001, 0.0001, 0.0001))]);
 
 console.log(sceneDef);
 
@@ -110,7 +106,7 @@ class ThreeScene extends Component<{}, {}> {
   }
   start = () => {
     if (!frameId) {
-      frameId = requestAnimationFrame(this.animate);
+      frameId = window.requestAnimationFrame(this.animate);
     }
   };
   stop = () => {

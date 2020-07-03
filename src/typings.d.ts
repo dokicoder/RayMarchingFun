@@ -1,9 +1,9 @@
-declare module "*.frag" {
-  const value: any;
+declare module '*.frag' {
+  const value: string;
   export = value;
 }
 
-declare module "*.vert" {
-  const value: any;
+declare module '*.vert' {
+  const value: string;
   export = value;
 }

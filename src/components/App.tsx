@@ -41,7 +41,7 @@ const App = () => (
         <MetaballsScene />
       </Route>
       <Route path="*">
-        <Redirect to="/raymarchingTest" />
+        <Redirect to="/metaballs" />
       </Route>
     </Switch>
   </BrowserRouter>

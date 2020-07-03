@@ -1,10 +1,7 @@
-import React, { Component, useEffect } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import * as THREE from 'three';
-import { Scene, WebGLRenderer, Camera, Clock } from 'three';
-
-const Slider: React.FC<{ value: number; update: (value: number) => void }> = ({ value, update }) => {
-  return <input type="range" min="1" max="100" value={value} onChange={(e) => update(+e.target.value)} />;
-};
+import { Scene, WebGLRenderer, Camera, Clock, IUniform } from 'three';
+import { Slider } from './Slider';
 
 const vertexShader: string = `
 varying vec2 _uv;
@@ -46,6 +43,7 @@ const fragmentShader = `
 
 uniform float iTime;
 uniform float aspect;
+uniform float metaBallBlendValue;
 
 varying vec2 _uv;
 
@@ -80,7 +78,6 @@ float metaBalls (in vec3 p) {
     float r1 = 0.2;
     float r2 = 0.3;
 
-    float rCombine = 0.1;
 
     float t = 2. * 2.0; // TODO: time;
     vec3 spherePos1 = vec3 (-.4*cos(t), .1, -.3*sin(t));
@@ -90,7 +87,7 @@ float metaBalls (in vec3 p) {
     float ball1 = sphereSdf (p + spherePos1, r1);
     float ball2 = sphereSdf (p + spherePos2, r2);
     //float ball3 = sphereSdf (p + spherePos3, r3);
-    float metaBalls = opCombine (ball1, ball2, rCombine);
+    float metaBalls = opCombine (ball1, ball2, metaBallBlendValue);
 
     return metaBalls;
 }
@@ -275,25 +272,39 @@ void main () {
     gl_FragColor = vec4 (col, 1.);
 }`;
 
+// this is the state interface for the component (as the uniforms are the sole thing that is updated)
+interface MetaballUniforms {
+  aspect: IUniform;
+  iTime: IUniform;
+  metaBallBlendValue: IUniform;
+}
+
 let mount: HTMLDivElement = undefined;
 let camera: Camera = undefined;
-let scene: any = undefined;
+let scene: THREE.Scene = undefined;
 let renderer: WebGLRenderer | undefined = undefined;
-let cube: any = undefined;
-let frameId: any = undefined;
+let frameId: number = undefined;
 
 let aspect = 1;
 
 const clock = new Clock();
 
+const uniforms: MetaballUniforms = {
+  iTime: { value: clock.elapsedTime },
+  aspect: { value: aspect },
+  metaBallBlendValue: { value: 0.5 },
+};
+
 const material = new THREE.ShaderMaterial({
-  uniforms: {
-    iTime: { type: 'float', value: clock.elapsedTime },
-    aspect: { type: 'float', value: aspect },
-  },
+  uniforms,
   fragmentShader,
   vertexShader,
 });
+
+interface Action {
+  type: keyof MetaballUniforms;
+  value: any;
+}
 
 const v0 = [-1.0, -1.0, 1.0];
 const uv0 = [0.0, 0.0];
@@ -316,40 +327,14 @@ const Plane = () => {
 };
 
 const MetaballScene: React.FC = () => {
-  useEffect(() => {
-    const { clientWidth: width, clientHeight: height } = mount;
-
-    clock.start();
-    console.log('clock started');
-
-    aspect = width / height;
-
-    // add scene
-    scene = new Scene();
-
-    camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-
-    // add renderer
-    renderer = new WebGLRenderer({ antialias: true });
-    renderer.setClearColor('#880400');
-    renderer.setSize(width, height);
-    mount.appendChild(renderer.domElement);
-
-    scene.add(Plane());
-
-    start();
-
-    return () => {
-      stop();
-      mount.removeChild(renderer.domElement);
-    };
-  });
+  const renderScene = () => {
+    renderer.render(scene, camera);
+  };
 
   const animate = () => {
-    material.uniforms.aspect.value = aspect;
-    material.uniforms.iTime.value = clock.getElapsedTime();
-
-    //console.log(clock.getElapsedTime());
+    Object.entries(uniforms).forEach(([key, { value }]) => {
+      material.uniforms[key].value = value;
+    });
 
     renderScene();
     frameId = requestAnimationFrame(animate);
@@ -366,11 +351,60 @@ const MetaballScene: React.FC = () => {
     frameId = undefined;
   };
 
-  const renderScene = () => {
-    renderer.render(scene, camera);
+  const reducer = (state: MetaballUniforms, { type, value }: Action) => {
+    // we need to update the uniforms object as well as the state copy to keep animate (bot in react state)
+    // and render (in react state) in sync
+    // if we try to save everything in react store, THREE.js will still display the initial state because animate() operates on the initial instance of the state object
+    uniforms[type].value = value;
+    return { ...state, [type]: { value } };
   };
 
-  return <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />;
+  const [stateUniforms, dispatch] = useReducer(reducer, uniforms);
+
+  useEffect(() => {
+    const { clientWidth: width, clientHeight: height } = mount;
+
+    clock.start();
+    console.log('clock started');
+
+    uniforms.aspect.value = width / height;
+
+    // add scene
+    scene = new Scene();
+
+    camera = new THREE.PerspectiveCamera(75, uniforms.aspect.value, 0.1, 1000);
+
+    // add renderer
+    renderer = new WebGLRenderer({ antialias: true });
+    renderer.setClearColor('#880400');
+    renderer.setSize(width, height);
+    mount.appendChild(renderer.domElement);
+
+    scene.add(Plane());
+
+    start();
+
+    return () => {
+      stop();
+      mount.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  console.log('rerender');
+
+  return (
+    <>
+      <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />
+      {/* TODO: debounce */}
+      <Slider
+        value={stateUniforms.metaBallBlendValue.value}
+        update={(value) => {
+          dispatch({ type: 'metaBallBlendValue', value });
+        }}
+        label="Metaball blend factor"
+      />
+    </>
+  );
 };
 
 export default MetaballScene;
