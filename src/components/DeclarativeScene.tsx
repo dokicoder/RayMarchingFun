@@ -45,8 +45,8 @@ const Plane = () => {
   const uvs = new Float32Array([...uv0, ...uv1, ...uv2, ...uv2, ...uv3, ...uv0]);
 
   const geometry = new THREE.BufferGeometry()
-    .addAttribute('position', new THREE.BufferAttribute(vertices, 3))
-    .addAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    .setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    .setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   //const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
   return new THREE.Mesh(geometry, material);

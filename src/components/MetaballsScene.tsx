@@ -1,6 +1,10 @@
-import React, { Component } from 'react';
+import React, { Component, useEffect } from 'react';
 import * as THREE from 'three';
-import { Scene, WebGLRenderer, Camera, Vector3, Clock } from 'three';
+import { Scene, WebGLRenderer, Camera, Clock } from 'three';
+
+const Slider: React.FC<{ value: number; update: (value: number) => void }> = ({ value, update }) => {
+  return <input type="range" min="1" max="100" value={value} onChange={(e) => update(+e.target.value)} />;
+};
 
 const vertexShader: string = `
 varying vec2 _uv;
@@ -53,7 +57,8 @@ const float PI = 3.14159265359;
 float saturate (in float v) { return clamp (v, .0, 1.); }
 
 // ray-marching, SDF stuff /////////////////////////////////////////////////////
-float sdSphere (in vec3 p, in float r) {
+
+float sphereSdf (in vec3 p, in float r) {
     return length (p) - r;
 }
 
@@ -65,38 +70,27 @@ float opCombine (in float d1, in float d2, in float r) {
 float metaBalls (in vec3 p) {
     float time = 0.4 + iTime * 0.2;
     
+    /*
     float r1 = .1 + .3 * (.5 + .5 * sin (2. * time));
     float r2 = .15 + .2 * (.5 + .5 * sin (3. * time));
     float r3 = .2 + .2 * (.5 + .5 * sin (4. * time));
     float r4 = .25 + .1 * (.5 + .5 * sin (5. * time));
+    */
 
-    float t = 2. * time;
-    vec3 offset1 = vec3 (-.4*cos(t), .1, -.3*sin(t));
-    vec3 offset2 = vec3 (.2, .2*cos(t), .3*sin(t));
-    vec3 offset3 = vec3 (-.2*cos(t), -.2*sin(t), .3);
-    vec3 offset4 = vec3 (.1, -.4*cos(t), .4*sin(t));
-    vec3 offset5 = vec3 (.4*cos(t), -.2, .3*sin(t));
-    vec3 offset6 = vec3 (-.2*cos(t), -.4, -.4*sin(t));
-    vec3 offset7 = vec3 (.3*sin(t), -.6*cos(t), .6);
-    vec3 offset8 = vec3 (-.3, .5*sin(t), -.4*cos(t));
+    float r1 = 0.2;
+    float r2 = 0.3;
 
-    float ball1 = sdSphere (p + offset1, r4);
-    float ball2 = sdSphere (p + offset2, r2);
-	  float metaBalls = opCombine (ball1, ball2, r1);
+    float rCombine = 0.1;
 
-  /*
-    ball1 = sdSphere (p + offset3, r1);
-    ball2 = sdSphere (p + offset4, r3);
-	  metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r2);
+    float t = 2. * 2.0; // TODO: time;
+    vec3 spherePos1 = vec3 (-.4*cos(t), .1, -.3*sin(t));
+    vec3 spherePos2 = vec3 (.2, .2*cos(t), .3*sin(t));
+    vec3 spherePos3 = vec3 (.2, .2*cos(t), .3*sin(t));
 
-    ball1 = sdSphere (p + offset5, r3);
-    ball2 = sdSphere (p + offset6, r2);
-	  metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r3);
-
-    ball1 = sdSphere (p + offset7, r3);
-    ball2 = sdSphere (p + offset8, r4);
-	  metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r4);
-	*/
+    float ball1 = sphereSdf (p + spherePos1, r1);
+    float ball2 = sphereSdf (p + spherePos2, r2);
+    //float ball3 = sphereSdf (p + spherePos3, r3);
+    float metaBalls = opCombine (ball1, ball2, rCombine);
 
     return metaBalls;
 }
@@ -258,7 +252,9 @@ void main () {
    //vec3 samplingPos = vec3(transformUV, 0) + vec3(0.0, 0.0, 12.0);
 
     // set up "camera", view origin (ro) and view direction (rd)
-    float t = 0.1 * iTime + 5.;
+    //float t = 0.1 * iTime + 5.;
+    float t = 0.1 * 0.3 + 5.;
+    
     float angle = radians (t * 100.0);
     float dist = 1.25;
     vec3 ro = vec3 (dist * cos (angle), 0.5, dist * -sin (angle));
@@ -309,11 +305,8 @@ const v3 = [-1.0, 1.0, 1.0];
 const uv3 = [0.0, 1.0];
 
 const Plane = () => {
-  const vertices = new Float32Array(
-    [...v0, ...v1, ...v2, ...v2, ...v3, ...v0] //.map((x, idx) => x * 0.9) // + (idx % 3 === 0 ? 0.2 : 0))
-  );
-
-  const uvs = new Float32Array([...uv0, ...uv1, ...uv2, ...uv2, ...uv3, ...uv0]);
+  const vertices = new Float32Array([v0, v1, v2, v2, v3, v0].flat());
+  const uvs = new Float32Array([uv0, uv1, uv2, uv2, uv3, uv0].flat());
 
   const geometry = new THREE.BufferGeometry()
     .setAttribute('position', new THREE.BufferAttribute(vertices, 3))
@@ -322,16 +315,8 @@ const Plane = () => {
   return new THREE.Mesh(geometry, material);
 };
 
-let arc = 0;
-let lP = new THREE.Vector3(8, 7, -6);
-const playerTransform = new THREE.Vector3(8, 7, -6);
-
-class ThreeScene extends Component<{}, {}> {
-  constructor(props: {}) {
-    super(props);
-  }
-
-  componentDidMount() {
+const MetaballScene: React.FC = () => {
+  useEffect(() => {
     const { clientWidth: width, clientHeight: height } = mount;
 
     clock.start();
@@ -339,12 +324,12 @@ class ThreeScene extends Component<{}, {}> {
 
     aspect = width / height;
 
-    //ADD SCENE
+    // add scene
     scene = new Scene();
 
     camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
 
-    //ADD RENDERER
+    // add renderer
     renderer = new WebGLRenderer({ antialias: true });
     renderer.setClearColor('#880400');
     renderer.setSize(width, height);
@@ -352,40 +337,40 @@ class ThreeScene extends Component<{}, {}> {
 
     scene.add(Plane());
 
-    this.start();
-  }
+    start();
 
-  componentWillUnmount() {
-    this.stop();
-    mount.removeChild(renderer.domElement);
-  }
+    return () => {
+      stop();
+      mount.removeChild(renderer.domElement);
+    };
+  });
 
-  start = () => {
+  const animate = () => {
+    material.uniforms.aspect.value = aspect;
+    material.uniforms.iTime.value = clock.getElapsedTime();
+
+    //console.log(clock.getElapsedTime());
+
+    renderScene();
+    frameId = requestAnimationFrame(animate);
+  };
+
+  const start = () => {
     if (!frameId) {
-      frameId = requestAnimationFrame(this.animate);
+      frameId = requestAnimationFrame(animate);
     }
   };
 
-  stop = () => {
+  const stop = () => {
     cancelAnimationFrame(frameId);
     frameId = undefined;
   };
 
-  animate = () => {
-    material.uniforms.aspect.value = aspect;
-    material.uniforms.iTime.value = clock.getElapsedTime();
-
-    console.log(clock.getElapsedTime());
-
-    this.renderScene();
-    frameId = window.requestAnimationFrame(this.animate);
-  };
-  renderScene = () => {
+  const renderScene = () => {
     renderer.render(scene, camera);
   };
-  render() {
-    return <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />;
-  }
-}
 
-export default ThreeScene;
+  return <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />;
+};
+
+export default MetaballScene;
