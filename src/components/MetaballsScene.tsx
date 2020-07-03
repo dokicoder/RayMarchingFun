@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
-import { Scene, WebGLRenderer, Camera, Vector3 } from 'three';
+import { Scene, WebGLRenderer, Camera, Vector3, Clock } from 'three';
 
 const vertexShader: string = `
 varying vec2 _uv;
@@ -40,6 +40,11 @@ const fragmentShader = `
 
 // Mouse y-coordinate moves ground-plane up and down
 
+uniform float iTime;
+uniform float aspect;
+
+varying vec2 _uv;
+
 const int MAX_STEPS = 64;
 const float EPSILON = .0001;
 const float STEP_SIZE = .975;
@@ -58,7 +63,7 @@ float opCombine (in float d1, in float d2, in float r) {
 }
 
 float metaBalls (in vec3 p) {
-    float time = 0.4 + iTime * 0.02;
+    float time = 0.4 + iTime * 0.2;
     
     float r1 = .1 + .3 * (.5 + .5 * sin (2. * time));
     float r2 = .15 + .2 * (.5 + .5 * sin (3. * time));
@@ -77,20 +82,20 @@ float metaBalls (in vec3 p) {
 
     float ball1 = sdSphere (p + offset1, r4);
     float ball2 = sdSphere (p + offset2, r2);
-	float metaBalls = opCombine (ball1, ball2, r1);
+	  float metaBalls = opCombine (ball1, ball2, r1);
 
-    /*
+  /*
     ball1 = sdSphere (p + offset3, r1);
     ball2 = sdSphere (p + offset4, r3);
-	metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r2);
+	  metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r2);
 
     ball1 = sdSphere (p + offset5, r3);
     ball2 = sdSphere (p + offset6, r2);
-	metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r3);
+	  metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r3);
 
     ball1 = sdSphere (p + offset7, r3);
     ball2 = sdSphere (p + offset8, r4);
-	metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r4);
+	  metaBalls = opCombine (metaBalls, opCombine (ball1, ball2, .2), r4);
 	*/
 
     return metaBalls;
@@ -241,11 +246,16 @@ vec3 camera (in vec2 uv, in vec3 ro, in vec3 aim, in float zoom) {
 
 
 // bringing it all together ////////////////////////////////////////////////////
-void mainImage (out vec4 fragColor, in vec2 fragCoord) {
-	vec2 uv = fragCoord.xy / iResolution.xy;
+void main () {
+    /*
+    vec2 uv = fragCoord.xy / iResolution.xy;
     vec2 uvRaw = uv;
     uv = uv * 2. - 1.;
     uv.x *= iResolution.x / iResolution.y;
+    */
+
+   vec2 uv = (2.0 * _uv - vec2(1.0, 1.0)) * vec2(aspect, 1.0);
+   //vec3 samplingPos = vec3(transformUV, 0) + vec3(0.0, 0.0, 12.0);
 
     // set up "camera", view origin (ro) and view direction (rd)
     float t = 0.1 * iTime + 5.;
@@ -266,7 +276,7 @@ void mainImage (out vec4 fragColor, in vec2 fragCoord) {
     col = col / (2. + col);
     //col = sqrt (col);
 
-	fragColor = vec4 (col, 1.);
+    gl_FragColor = vec4 (col, 1.);
 }`;
 
 let mount: HTMLDivElement = undefined;
@@ -278,9 +288,12 @@ let frameId: any = undefined;
 
 let aspect = 1;
 
+const clock = new Clock();
+
 const material = new THREE.ShaderMaterial({
   uniforms: {
-    lightPos: { type: 'vec3', value: new THREE.Vector3(8, 7, -6) },
+    iTime: { type: 'float', value: clock.elapsedTime },
+    aspect: { type: 'float', value: aspect },
   },
   fragmentShader,
   vertexShader,
@@ -303,9 +316,8 @@ const Plane = () => {
   const uvs = new Float32Array([...uv0, ...uv1, ...uv2, ...uv2, ...uv3, ...uv0]);
 
   const geometry = new THREE.BufferGeometry()
-    .addAttribute('position', new THREE.BufferAttribute(vertices, 3))
-    .addAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-  //const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    .setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    .setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
   return new THREE.Mesh(geometry, material);
 };
@@ -321,6 +333,9 @@ class ThreeScene extends Component<{}, {}> {
 
   componentDidMount() {
     const { clientWidth: width, clientHeight: height } = mount;
+
+    clock.start();
+    console.log('clock started');
 
     aspect = width / height;
 
@@ -344,28 +359,24 @@ class ThreeScene extends Component<{}, {}> {
     this.stop();
     mount.removeChild(renderer.domElement);
   }
+
   start = () => {
     if (!frameId) {
       frameId = requestAnimationFrame(this.animate);
     }
   };
+
   stop = () => {
     cancelAnimationFrame(frameId);
     frameId = undefined;
   };
-  // THREE.Vector3(Math.cos(arc) * 6, 7, Math.sin(arc) * -6)
+
   animate = () => {
-    arc += 0.03;
-    lP.x = Math.cos(arc) * 26;
-    lP.y = 50;
-    lP.z = Math.sin(arc) * -26;
-    material.setValues({
-      uniforms: {
-        lightPos: { type: 'vec3', value: lP },
-        aspect: { type: 'float', value: aspect },
-        playerTransform: { type: 'vec3', value: playerTransform },
-      },
-    });
+    material.uniforms.aspect.value = aspect;
+    material.uniforms.iTime.value = clock.getElapsedTime();
+
+    console.log(clock.getElapsedTime());
+
     this.renderScene();
     frameId = window.requestAnimationFrame(this.animate);
   };
@@ -373,7 +384,7 @@ class ThreeScene extends Component<{}, {}> {
     renderer.render(scene, camera);
   };
   render() {
-    return <div style={{ width: '2000px', height: '1200px' }} ref={(m) => (mount = m)} />;
+    return <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />;
   }
 }
 
