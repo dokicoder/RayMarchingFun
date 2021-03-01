@@ -10,7 +10,7 @@
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-router-dom": "^5.2.0",
-    "three": "0.116.1",
+    "three": "0.125.0",
     "uuid": "^8.2.0"
   },
   "devDependencies": {
