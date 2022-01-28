@@ -113,7 +113,7 @@ float map (in vec3 p) {
     return metaBalls (p);
 }
 
-float march (in vec3 ro, in vec3 rd) {
+float rayMarch (in vec3 ro, in vec3 rd) {
     float t = .0;
     float d = .0;
     for (int i = 0; i < MAX_STEPS; ++i) {
@@ -170,7 +170,7 @@ vec3 normal (in vec3 p) {
 float shadow (in vec3 p, in vec3 lPos) {
     float lDist = distance (p, lPos);
     vec3 lDir = normalize (lPos - p);
-    float dist = march (p, lDir);
+    float dist = rayMarch (p, lDir);
     return dist < lDist ? .1 : 1.;
 }
 
@@ -233,7 +233,7 @@ vec3 shade (in vec3 ro, in vec3 rd, in float d, in vec3 albedo) {
 	    //Lo *= shadow (p+.01*N, L);
     }
 
-    vec3 irradiance = vec3 (1.);
+    vec3 irradiance = vec3 (1.0);
     vec3 diffuse    = irradiance * albedo;
     vec3 ambient    = (kD * diffuse) * ao;
 
@@ -241,52 +241,49 @@ vec3 shade (in vec3 ro, in vec3 rd, in float d, in vec3 albedo) {
 }
 
 // create view-ray /////////////////////////////////////////////////////////////
-vec3 camera (in vec2 uv, in vec3 ro, in vec3 aim, in float zoom) {
-    vec3 camForward = normalize (vec3 (aim - ro));
-    vec3 worldUp = vec3 (.0, 1., .0);
+vec3 camera (in vec2 uv, in vec3 rayOrigin, in vec3 target, in float zoom) {
+    vec3 camForward = normalize (vec3 (target - rayOrigin));
+    vec3 worldUp = vec3 (0.0, 1.0, 0.0);
     vec3 camRight = normalize (cross (worldUp, camForward));
     vec3 camUp = normalize (cross (camForward, camRight));
-    vec3 camCenter = ro + camForward * zoom;
+    vec3 camCenter = rayOrigin + camForward * zoom;
     
-    return normalize (camCenter + uv.x * camRight + uv.y * camUp - ro);
+    return normalize (camCenter + uv.x * camRight + uv.y * camUp - rayOrigin);
 }
 
 
 // bringing it all together ////////////////////////////////////////////////////
 void main () {
-    /*
-    vec2 uv = fragCoord.xy / iResolution.xy;
-    vec2 uvRaw = uv;
-    uv = uv * 2. - 1.;
-    uv.x *= iResolution.x / iResolution.y;
-    */
-
-   vec2 uv = (2.0 * _uv - vec2(1.0, 1.0)) * vec2(aspect, 1.0);
+// map uv from [0, 1] to [-1, 1]
+   vec2 uv = (2.0 * _uv - vec2(1.0, 1.0));
+   // correct for canvas aspect by scaling vertically
+   uv *=  vec2(aspect, 1.0);
    //vec3 samplingPos = vec3(transformUV, 0) + vec3(0.0, 0.0, 12.0);
 
     // set up "camera", view origin (ro) and view direction (rd)
     //float t = 0.1 * iTime + 5.;
-    float t = 0.1 * 0.3 + 5.;
+    float t = 5.4;
     
     float angle = radians (t * 100.0 + cameraRotationOffset);
     float dist = 1.25;
-    vec3 ro = vec3 (dist * cos (angle), 0.5, dist * -sin (angle));
-    vec3 aim = vec3 (.0);
-    float zoom = 1.3;
-    vec3 rd = camera (uv, ro, aim, zoom);
 
-    float d = march (ro, rd);
-    vec3 p = ro + d * rd;
+    vec3 rayOrigin = vec3 (dist * cos (angle), 0.5, dist * -sin (angle));
+    vec3 target = vec3 (.0);
+    float zoom = 1.3;
+    vec3 rayDirection = camera (uv, rayOrigin, target, zoom);
+
+    float d = rayMarch (rayOrigin, rayDirection);
+    vec3 p = rayOrigin + d * rayDirection;
     
     vec3 n = normal (p);
 
     vec3 albedo = metaBallsColor(p);
 
-    vec3 col = shade (ro, rd, d, albedo);
+    vec3 col = shade (rayOrigin, rayDirection, d, albedo);
+
     col = mix (col, vec3 (.0), pow (1. - 1. / d, 5.));
-
     col = col / (2. + col);
-    //col = sqrt (col);
 
+    //gl_FragColor = vec4 ( ceil(uv), 0.0, 1.0);
     gl_FragColor = vec4 (col, 1.);
 }

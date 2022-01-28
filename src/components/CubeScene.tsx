@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { Scene, WebGLRenderer, Camera, Clock } from 'three';
 import { Slider } from './Slider';
 
-import fragmentShader from '../shaders/cubeScene.frag?raw';
+//import fragmentShader from '../shaders/cubeScene.frag?raw';
+import fragmentShader from '../shaders/iqScene.frag?raw';
 import { IUniform } from 'three/src/renderers/shaders/UniformsLib';
 
 const vertexShader: string = `
@@ -36,11 +37,50 @@ let aspect = 1;
 
 const clock = new Clock();
 
+/*
+ this.mRenderer.SetShaderConstant1F(  "iTime", time); -- 4.947
+    this.mRenderer.SetShaderConstant3F(  "iResolution", xres, yres, 1.0); -- 1010 422
+    this.mRenderer.SetShaderConstant4FV( "iMouse", mouse); -- [ 0, 0, -0, -0]
+    this.mRenderer.SetShaderConstant1FV( "iChannelTime", times );              // OBSOLETE --
+    this.mRenderer.SetShaderConstant4FV( "iDate", dates ); -- [ 2022, 0, 28, 43984.11 ]
+    this.mRenderer.SetShaderConstant3FV( "iChannelResolution", resos );        // OBSOLETE --  [0...] mit length 12
+    this.mRenderer.SetShaderConstant1F(  "iSampleRate", this.mSampleRate); -- 44100
+    this.mRenderer.SetShaderTextureUnit( "iChannel0", 0 );
+    this.mRenderer.SetShaderTextureUnit( "iChannel1", 1 );
+    this.mRenderer.SetShaderTextureUnit( "iChannel2", 2 );
+    this.mRenderer.SetShaderTextureUnit( "iChannel3", 3 );
+    this.mRenderer.SetShaderConstant1I(  "iFrame", this.mFrame ); -- 3
+    this.mRenderer.SetShaderConstant1F(  "iTimeDelta", dtime); 0.02 oder so
+    this.mRenderer.SetShaderConstant1F(  "iFrameRate", fps ); 30
+
+    // rest is 0
+    this.mRenderer.SetShaderConstant1F(  "iCh0.time", times[0] );
+    this.mRenderer.SetShaderConstant1F(  "iCh1.time", times[1] );
+    this.mRenderer.SetShaderConstant1F(  "iCh2.time", times[2] );
+    this.mRenderer.SetShaderConstant1F(  "iCh3.time", times[3] );
+    this.mRenderer.SetShaderConstant3F(  "iCh0.size", resos[0], resos[ 1], resos[ 2] );
+    this.mRenderer.SetShaderConstant3F(  "iCh1.size", resos[3], resos[ 4], resos[ 5] );
+    this.mRenderer.SetShaderConstant3F(  "iCh2.size", resos[6], resos[ 7], resos[ 8] );
+    this.mRenderer.SetShaderConstant3F(  "iCh3.size", resos[9], resos[10], resos[11] );
+    this.mRenderer.SetShaderConstant1I(  "iCh0.loaded",       texIsLoaded[0] );
+    this.mRenderer.SetShaderConstant1I(  "iCh1.loaded",       texIsLoaded[1] );
+    this.mRenderer.SetShaderConstant1I(  "iCh2.loaded",       texIsLoaded[2] );
+    this.mRenderer.SetShaderConstant1I(  "iCh3.loaded",       texIsLoaded[3] );
+*/
+
 const uniforms: { [uniform: string]: IUniform } = {
-  iTime: { value: clock.elapsedTime },
+  iTime: { value: 4.947 },
   aspect: { value: aspect },
   metaBallBlendValue: { value: 0.5 },
   cameraRotationOffset: { value: 0 },
+  iResolution: { value: new THREE.Vector3(1300, 800, 1) },
+  iMouse: { value: [0, 0, 0, 0] },
+  iChannel0: { value: 0 },
+  iChannel1: { value: 0 },
+  iChannel2: { value: 0 },
+  iChannel3: { value: 0 },
+  iChannelTime: { value: [0, 0, 0, 0] },
+  iFrame: { value: 3 },
 };
 
 const material = new THREE.ShaderMaterial({
