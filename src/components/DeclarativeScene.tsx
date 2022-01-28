@@ -14,7 +14,7 @@ let aspect = 1;
 
 const sceneDef = fragmentShader([box(new THREE.Vector3(0, 0, -100), new THREE.Vector3(0.0001, 0.0001, 0.0001))]);
 
-console.log(sceneDef);
+//console.log(sceneDef);
 
 const material = new THREE.ShaderMaterial({
   uniforms: {
