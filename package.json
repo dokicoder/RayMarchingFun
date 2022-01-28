@@ -1,39 +1,31 @@
 {
-  "name": "RayMarching",
-  "version": "0.0.00",
+  "name": "raymarching_fun",
+  "version": "0.0.0",
   "private": true,
   "description": "RayMarching implementation with Typescript and Three.js",
   "main": "index.js",
   "dependencies": {
-    "@types/uuid": "^8.0.0",
-    "materialize-css": "1.0.0",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "react-router-dom": "^5.2.0",
-    "three": "0.116.1",
-    "uuid": "^8.2.0"
+    "@react-three/drei": "^8.6.0",
+    "@react-three/fiber": "^7.0.24",
+    "@types/three": "^0.136.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-router": "^6.2.1",
+    "react-router-dom": "^6.2.1",
+    "three": "^0.136.0",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@types/react": "16.9.35",
-    "@types/react-dom": "16.9.8",
-    "@types/react-router-dom": "5.1.5",
-    "awesome-typescript-loader": "5.2.1",
-    "clean-webpack-plugin": "3.0.0",
-    "file-loader": "6.0.0",
-    "html-webpack-plugin": "4.3.0",
-    "raw-loader": "4.0.1",
-    "tslint": "6.1.2",
-    "tslint-react": "5.0.0",
-    "tslint-webpack-plugin": "2.1.0",
-    "typescript": "^3.9.3",
-    "url-loader": "4.1.0",
-    "webpack": "^4.31.0",
-    "webpack-cli": "3.3.11",
-    "webpack-dev-server": "3.11.0"
+    "@types/react": "^17.0.38",
+    "@types/react-dom": "^17.0.11",
+    "@vitejs/plugin-react": "^1.1.4",
+    "typescript": "^4.5.4",
+    "vite": "^2.7.12"
   },
   "scripts": {
-    "start": "webpack-dev-server --open --port 3000",
-    "build": "webpack -p --env production"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "author": "Kay Illner",
   "contributors": [

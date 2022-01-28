@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Route, Link, Switch, Redirect } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import RaymarchingTestScene from './DeclarativeScene';
 import MetaballsScene from './MetaballsScene';
 
@@ -33,17 +33,10 @@ const Menu: React.FC = () => {
 const App = () => (
   <BrowserRouter>
     <Menu />
-    <Switch>
-      <Route path="/raymarchingTest">
-        <RaymarchingTestScene />
-      </Route>
-      <Route path="/metaballs">
-        <MetaballsScene />
-      </Route>
-      <Route path="*">
-        <Redirect to="/metaballs" />
-      </Route>
-    </Switch>
+    <Routes>
+      <Route path="/raymarchingTest" element={<RaymarchingTestScene />} />
+      <Route path="/metaballs" element={<MetaballsScene />} />
+    </Routes>
   </BrowserRouter>
 );
 
