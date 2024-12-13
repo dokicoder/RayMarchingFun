@@ -9,8 +9,6 @@ export const Slider: React.FC<{ value: number; update: (value: number) => void; 
 }) => {
   const [id] = useState<string>(`slider-${randomId()}`);
 
-  console.log({ value });
-
   return (
     <>
       {label && <label htmlFor={id}>{label}</label>}
@@ -21,7 +19,7 @@ export const Slider: React.FC<{ value: number; update: (value: number) => void; 
         step={(max - min) / 100}
         min={min}
         max={max}
-        onChange={(e) => update(+e.target.value)}
+        onChange={e => update(+e.target.value)}
       />
     </>
   );

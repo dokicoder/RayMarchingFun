@@ -259,14 +259,14 @@ vec3 shade (in vec3 ro, in vec3 rd, in float d, in vec3 albedo) {
 }
 
 // create view-ray /////////////////////////////////////////////////////////////
-vec3 camera (in vec2 uv, in vec3 ro, in vec3 aim, in float zoom) {
-    vec3 camForward = normalize (vec3 (aim - ro));
+vec3 camera (in vec2 uv, in vec3 rayOrigin, in vec3 aim, in float zoom) {
+    vec3 camForward = normalize (vec3 (aim - rayOrigin));
     vec3 worldUp = vec3 (.0, 1., .0);
     vec3 camRight = normalize (cross (worldUp, camForward));
     vec3 camUp = normalize (cross (camForward, camRight));
-    vec3 camCenter = ro + camForward * zoom;
+    vec3 camCenter = rayOrigin + camForward * zoom;
     
-    return normalize (camCenter + uv.x * camRight + uv.y * camUp - ro);
+    return normalize (camCenter + uv.x * camRight + uv.y * camUp - rayOrigin);
 }
 
 
@@ -404,9 +404,14 @@ const MetaballScene: React.FC = () => {
     const { clientWidth: width, clientHeight: height } = mount;
 
     clock.start();
+
     console.log('clock started');
 
     uniforms.aspect.value = width / height;
+
+    if (mount.children.length) {
+      mount.innerHTML = '';
+    }
 
     // add scene
     scene = new Scene();
@@ -428,8 +433,6 @@ const MetaballScene: React.FC = () => {
       if (mount) mount.removeChild(renderer.domElement);
     };
   }, []);
-
-  console.log('rerender');
 
   return (
     <>
