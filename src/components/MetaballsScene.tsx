@@ -4,7 +4,7 @@ import { Scene, WebGLRenderer, Camera, Clock, IUniform } from 'three';
 import { Slider } from './Slider';
 
 const vertexShader: string = `
-varying vec2 _uv;
+out vec2 _uv;
 
 void main() {
   _uv = uv;
@@ -14,17 +14,18 @@ void main() {
 `;
 
 const fragmentShader = `
+#define PI 3.1415926538
+
 uniform float aspect;
 uniform float metaBallBlendValue;
 uniform float cameraRotationOffset;
 
-varying vec2 _uv;
+in vec2 _uv;
 
 const int MAX_STEPS = 64;
 // allowed distance from surface
 const float EPSILON = .0001;
 const float STEP_SIZE = .999; // TODO: why not use 1 here?
-const float PI = 3.14159265359;
 const float OUT_BOUNDS_DISTANCE = 1000.0;
 
 float sphereSdf(in vec3 p, in float r) {
@@ -36,20 +37,34 @@ float opCombine(in float d1, in float d2, in float r) {
     return mix(d2, d1, h) - r * h *(1. - h);
 }
 
-float metaBallsScene(in vec3 p) {
+float scene(in vec3 p) {
     // TODO: from uniforms
-    float r1 = 0.2;
-    float r2 = 0.3;
+    float rCenter = 2.2;
+    float rOther = 0.3;
 
-    vec3 spherePos1 = vec3(0.);
-    vec3 spherePos2 = vec3(-1., 0., 0.);
+    vec3 spherePosCenter = vec3(0.);
+    float ballCenter = sphereSdf(p + spherePosCenter, rCenter);
 
-    float ball1 = sphereSdf(p + spherePos1, r1);
-    float ball2 = sphereSdf(p + spherePos2, r2);
-  
-    float metaBalls = opCombine(ball1, ball2, metaBallBlendValue);
+    float metaBalls = ballCenter;
+    
+    for(int i=0;i<10;++i)
+    {
+      float angle = float(i) * 0.2 * PI;
+      vec3 spherePosOuter = vec3(cos(angle), -sin(angle), 0.0) * 2.4;
+      float outerBall = sphereSdf(p + spherePosOuter, rOther);
+      
+      metaBalls = opCombine(metaBalls, outerBall, metaBallBlendValue);
+    }
 
     return metaBalls;
+}
+
+vec3 normal (in vec3 p) {
+	float d = scene(p);
+  vec3 e = vec3 (.001, .0, .0);
+  return normalize (vec3 (scene(p + e.xyy) - d,
+                          scene(p + e.yxy) - d,
+                          scene(p + e.yyx) - d));
 }
 
 float rayMarch(in vec3 ro, in vec3 rd) {
@@ -57,7 +72,7 @@ float rayMarch(in vec3 ro, in vec3 rd) {
   float d = .0;
   for(int i = 0; i < MAX_STEPS; ++i) {
       vec3 p = ro + d * rd;
-      t = metaBallsScene(p);
+      t = scene(p);
       if(t < EPSILON) {
         return d;
       }
@@ -65,6 +80,107 @@ float rayMarch(in vec3 ro, in vec3 rd) {
   }
   return OUT_BOUNDS_DISTANCE;
 }
+
+// TODO: get rid of this #################
+
+float distriGGX (in vec3 N, in vec3 H, in float roughness) {
+    float a2     = roughness * roughness;
+    float NdotH  = max (dot (N, H), .0);
+    float NdotH2 = NdotH * NdotH;
+
+    float nom    = a2;
+    float denom  = (NdotH2 * (a2 - 1.) + 1.);
+    denom        = PI * denom * denom;
+
+    return nom / denom;
+}
+
+float geomSchlickGGX (in float NdotV, in float roughness) {
+    float nom   = NdotV;
+    float denom = NdotV * (1. - roughness) + roughness;
+
+    return nom / denom;
+}
+
+vec3 fresnelSchlick (in float cosTheta, in vec3 F0, float roughness) {
+	return F0 + (max (F0, vec3(1. - roughness)) - F0) * pow (1. - cosTheta, 5.);
+}
+
+float geomSmith (in vec3 N, in vec3 V, in vec3 L, in float roughness) {
+    float NdotV = max (dot (N, V), .0);
+    float NdotL = max (dot (N, L), .0);
+    float ggx1 = geomSchlickGGX (NdotV, roughness);
+    float ggx2 = geomSchlickGGX (NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 shade (in vec3 ro, in vec3 p, in vec3 albedo) {
+    vec3 nor = normal (p);
+
+    // "material" hard-coded for the moment 
+    float mask = smoothstep (1., .05, 30.*cos (50.*p.y)+sin (50.*p.x)+ cos (50.*p.z));
+    //vec3 albedo = vec3(0.4,1.0,0.0);
+    float metallic = .5;
+    float roughness = .45;
+    float ao = 1.;
+
+    // lights hard-coded as well atm
+    vec3 lightColors[2];
+    lightColors[0] = vec3 (.7, .8, .9)*2.;
+    lightColors[1] = vec3 (.9, .8, .7)*2.;
+
+    vec3 lightPositions[2];
+    lightPositions[0] = vec3 (-1.5, 1.0, -3.);
+    lightPositions[1] = vec3 (2., -.5, 3.);
+
+	  vec3 N = normalize (nor);
+    vec3 V = normalize (ro - p);
+
+    vec3 F0 = vec3 (0.04); 
+    F0 = mix (F0, albedo, metallic);
+    vec3 kD = vec3(.0);
+	           
+    // reflectance equation
+    vec3 Lo = vec3 (.0);
+    for(int i = 0; i < 2; ++i) 
+    {
+        // calculate per-light radiance
+        vec3 L = normalize(lightPositions[i] - p);
+        vec3 H = normalize(V + L);
+        float distance    = length(lightPositions[i] - p);
+        float attenuation = 20. / (distance * distance);
+        vec3 radiance     = lightColors[i] * attenuation;
+        
+        // cook-torrance brdf
+        float aDirect = pow (roughness + 1., 2.);
+        float aIBL =  roughness * roughness;
+        float NDF = distriGGX(N, H, roughness);        
+        float G   = geomSmith(N, V, L, roughness);      
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0, roughness);       
+        
+        vec3 kS = F;
+        kD = vec3(1.) - kS;
+        kD *= 1. - metallic;	  
+        
+        vec3 nominator    = NDF * G * F;
+        float denominator = 4. * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        vec3 specular     = nominator / max(denominator, .001);  
+
+        // add to outgoing radiance Lo
+        float NdotL = max(dot(N, L), 0.0);                
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL; 
+	    //Lo *= shadow (p+.01*N, L);
+    }
+
+    vec3 irradiance = vec3 (1.);
+    vec3 diffuse    = irradiance * albedo;
+    vec3 ambient    = (kD * diffuse) * ao;
+
+    return ambient + Lo;
+}
+
+// #################
 
 // get camera ray for uv position
 vec3 cameraRay(in vec2 uv, in vec3 rayOrigin, in vec3 cameraTarget, in float zoom) {
@@ -82,21 +198,21 @@ void main() {
   vec2 uv = (2.0 * _uv - vec2(1., 1.));
 
   float cameraAngleY = radians(cameraRotationOffset);
-  float cameraDistanceFromTarget = 2.25;
+  float cameraDistanceFromTarget = 12.25;
 
   vec3 cameraOrigin = vec3(cameraDistanceFromTarget * cos(cameraAngleY), 0.0, cameraDistanceFromTarget * -sin(cameraAngleY));
   
   float zoom = 1.3;
   vec3 cameraTarget = vec3(.0);
-
   
   vec3 currentRayDirection = cameraRay(uv, cameraOrigin, cameraTarget, zoom);
   float d = rayMarch (cameraOrigin, currentRayDirection);
 
   if(d >= OUT_BOUNDS_DISTANCE) {
-    gl_FragColor = vec4(0., 0., 0., 1.);
-  } else {
     gl_FragColor = vec4(_uv, 0., 1.);
+  } else {
+    vec3 p = cameraOrigin + currentRayDirection * d;
+    gl_FragColor = vec4(shade(cameraOrigin, p, vec3(0.,0., 1.)), 1.0);
   }
 
 }`;
