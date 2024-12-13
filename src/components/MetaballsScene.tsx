@@ -414,7 +414,7 @@ const MetaballScene: React.FC = () => {
     camera = new THREE.PerspectiveCamera(75, uniforms.aspect.value, 0.1, 1000);
 
     // add renderer
-    renderer = new WebGLRenderer({ antialias: true });
+    renderer = new WebGLRenderer({ antialias: false });
     renderer.setClearColor('#880400');
     renderer.setSize(width, height);
     mount.appendChild(renderer.domElement);
@@ -433,12 +433,12 @@ const MetaballScene: React.FC = () => {
 
   return (
     <>
-      <div style={{ width: '1300px', height: '800px' }} ref={(m) => (mount = m)} />
+      <div style={{ width: '1300px', height: '800px' }} ref={m => (mount = m)} />
       {/* TODO: debounce */}
       <div style={{ width: '1300px' }}>
         <Slider
           value={stateUniforms.metaBallBlendValue.value}
-          update={(value) => {
+          update={value => {
             dispatch({ type: 'metaBallBlendValue', value });
           }}
           label="Metaball blend factor"
@@ -446,7 +446,7 @@ const MetaballScene: React.FC = () => {
         <Slider
           value={stateUniforms.cameraRotationOffset.value}
           range={[0, 360]}
-          update={(value) => {
+          update={value => {
             dispatch({ type: 'cameraRotationOffset', value });
           }}
           label="Camera rotation offset"
