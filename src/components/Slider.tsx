@@ -5,7 +5,7 @@ export const Slider: React.FC<{ value: number; update: (value: number) => void; 
   value,
   label,
   update,
-  range: [min, max] = [0, 1],
+  range: [min, max] = [0, 3],
 }) => {
   const [id] = useState<string>(`slider-${randomId()}`);
 

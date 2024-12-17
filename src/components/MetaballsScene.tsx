@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { Scene, WebGLRenderer, Camera, Clock, IUniform } from 'three';
 import { Slider } from './Slider';
 
+const NUM_BALLS = 50;
+
 const vertexShader: string = `
 out vec2 _uv;
 
@@ -18,11 +20,11 @@ void main() {
 const NUM_VERLET_ITERATIONS = 3;
 
 const config = {
-  repellentForce: 0.000001,
-  stickCorrectionForce: 0.001,
+  repellentForce: 0.0004,
+  stickCorrectionForce: 0.002,
   wallBounceDamping: 0.78,
   gravity: 0.00003,
-  friction: 0.01,
+  friction: 0.005,
   borderOffset: 0.0001,
   targetPullForce: 0,
 } as const;
@@ -33,8 +35,10 @@ let { repellentForce, stickCorrectionForce, wallBounceDamping, gravity, friction
 type Point = {
   x: number;
   y: number;
+  z: number;
   prevX: number;
   prevY: number;
+  prevZ: number;
   fixed?: boolean;
   isCenter?: boolean;
 };
@@ -56,15 +60,16 @@ let useGravity = false;
 
 const lerp = (x: number, y: number, t: number) => (1 - t) * x + t * y;
 
-function length({ x, y }: Point) {
-  return Math.sqrt(x * x + y * y);
+function length({ x, y, z }: Point) {
+  return (x * x + y * y + z * z) ** 1 / 3;
 }
 
 function distance(p0: Point, p1: Point) {
   const dX = p1.x - p0.x;
   const dY = p1.y - p0.y;
+  const dZ = p1.z - p0.z;
 
-  return Math.sqrt(dX * dX + dY * dY);
+  return (dX * dX + dY * dY + dZ * dZ) ** 1 / 3;
 }
 
 // applies physics to the points
@@ -78,6 +83,7 @@ function updatePoints() {
 
     let vX = p.x - p.prevX;
     let vY = p.y - p.prevY;
+    let vZ = p.z - p.prevZ;
 
     // we check points pairwise, but also, we check each pair twice, as Pa, Pb and as Pb, Pa
     // this is correct because this way each end of the pair gets updated
@@ -103,24 +109,29 @@ function updatePoints() {
       //   return;
       // }
 
-      const repellentVector = repellentForce / (dist * dist);
+      const repellentVector = Math.min(repellentForce / (dist * dist * dist), 0.0001);
 
       const pullVecX = ((p.x - otherP.x) / dist) * repellentVector;
       const pullVecY = ((p.y - otherP.y) / dist) * repellentVector;
+      const pullVecZ = ((p.z - otherP.z) / dist) * repellentVector;
 
       vX += pullVecX;
       vY += pullVecY;
+      vZ += pullVecZ;
     });
 
     vX *= 1 - friction;
     vY *= 1 - friction;
+    vZ *= 1 - friction;
 
     p.prevX = p.x;
     p.prevY = p.y;
+    p.prevZ = p.z;
 
     // TODO: time step dependence
     p.x += vX;
     p.y += vY;
+    p.z += vZ;
 
     // apply gravity
     // TODO: convert between coordinate systems so we can subtract gravity and this becomes less confusing
@@ -140,6 +151,7 @@ function updateSticks() {
   sticks.forEach(s => {
     const dX = s.p1.x - s.p0.x;
     const dY = s.p1.y - s.p0.y;
+    const dZ = s.p1.z - s.p0.z;
 
     const currentLength = distance(s.p0, s.p1);
     const dLength = currentLength - s.length;
@@ -148,6 +160,7 @@ function updateSticks() {
 
     const offsetX = dX * stickCorrectionForce * relativeLengthChange;
     const offsetY = dY * stickCorrectionForce * relativeLengthChange;
+    const offsetZ = dZ * stickCorrectionForce * relativeLengthChange;
 
     // this is a strictly speaking more correct implementation,
     // but the code below works just as well due to the iterations
@@ -173,10 +186,12 @@ function updateSticks() {
     if (!s.p0.fixed) {
       s.p0.x += offsetX;
       s.p0.y += offsetY;
+      s.p0.z += offsetZ;
     }
     if (!s.p1.fixed) {
       s.p1.x -= offsetX;
       s.p1.y -= offsetY;
+      s.p1.z -= offsetZ;
     }
   });
 }
@@ -211,8 +226,11 @@ function constrainBorders() {
 }
 
 function createRingPoint(angle: number, radius: number) {
-  const x = Math.cos(angle) * radius - 0.05 + Math.random() * 0.1;
-  const y = Math.sin(angle) * radius - 0.05 + Math.random() * 0.1;
+  const randScale = 0.01;
+
+  const x = Math.cos(angle) * radius - randScale * 0.5 + Math.random() * randScale;
+  const y = Math.sin(angle) * radius - randScale * 0.5 + Math.random() * randScale * 0.5;
+  const z = -randScale * 0.5 + Math.random() * randScale * 0.5;
 
   //const speedInferScale = 0.6;
   // const prevX = Math.cos(angle) * speedInferScale * radius + 600;
@@ -221,8 +239,10 @@ function createRingPoint(angle: number, radius: number) {
   return {
     x,
     y,
+    z: z,
     prevX: x,
     prevY: y,
+    prevZ: z,
   };
 }
 
@@ -233,15 +253,18 @@ function initSimulation() {
   const centerPoint = {
     x: 0,
     y: 0,
+    z: 0,
     prevX: 0,
     prevY: 0,
+    prevZ: 0,
     isCenter: true,
+    fixed: true,
   };
 
   points.push(centerPoint);
 
-  for (let i = 0; i < 10; ++i) {
-    const newPoint = createRingPoint((Math.PI / 5) * i, 0.3);
+  for (let i = 0; i < NUM_BALLS; ++i) {
+    const newPoint = createRingPoint(((Math.PI * 2) / NUM_BALLS) * i, 0.3);
 
     points.push(newPoint);
 
@@ -278,7 +301,8 @@ const fragmentShader = `
 uniform float aspect;
 uniform float metaBallBlendValue;
 uniform float cameraRotationOffset;
-uniform vec3 metaBallPositions[ 11 ];
+uniform vec3 metaBallPositions[ ${NUM_BALLS + 1} ];
+uniform float ballRadius;
 
 in vec2 _uv;
 
@@ -301,18 +325,17 @@ float opCombine(in float d1, in float d2, in float r) {
 float scene(in vec3 p) {
     // TODO: from uniforms
     float rCenter = 0.3;
-    float rOther = 0.9;
 
     vec3 spherePosCenter = vec3(0.);
     float ballCenter = sphereSdf(p + metaBallPositions[0], rCenter);
 
     float metaBalls = ballCenter;
     
-    for(int i=1;i<11;++i)
+    for(int i=1;i<${NUM_BALLS + 1};++i)
     {
       float angle = float(i) * 0.2 * PI;
       //vec3 spherePosOuter = vec3(cos(angle), -sin(angle), 0.0) * 3.4;
-      float outerBall = sphereSdf(p + metaBallPositions[i], rOther);
+      float outerBall = sphereSdf(p + metaBallPositions[i], ballRadius);
       
       metaBalls = opCombine(metaBalls, outerBall, metaBallBlendValue);
     }
@@ -392,8 +415,8 @@ vec3 shade (in vec3 ro, in vec3 p, in vec3 albedo) {
     lightColors[1] = vec3 (.9, .8, .7)*2.;
 
     vec3 lightPositions[2];
-    lightPositions[0] = vec3 (-1.5, 1.0, -3.);
-    lightPositions[1] = vec3 (2., -.5, 3.);
+    lightPositions[0] = vec3 (-0.5, 0.2, -0.3);
+    lightPositions[1] = vec3 (1., -.5, 0.);
 
 	  vec3 N = normalize (nor);
     vec3 V = normalize (ro - p);
@@ -473,7 +496,7 @@ void main() {
     gl_FragColor = vec4(_uv, 0., 1.);
   } else {
     vec3 p = cameraOrigin + currentRayDirection * d;
-    gl_FragColor = true ? vec4(shade(cameraOrigin, p, vec3(0.,0., 1.)), 1.0) : vec4(1.0, 0.0, 1.0, 0.0);
+    gl_FragColor = true ? vec4(shade(cameraOrigin, p, vec3(0.,1., .4)), 1.0) : vec4(0.5, 0.0, 1.0, 0.0);
   }
 
 }`;
@@ -496,8 +519,9 @@ let aspect = 1;
 
 const uniforms: MetaballUniforms = {
   aspect: { value: aspect },
-  metaBallBlendValue: { value: 0.5 },
+  metaBallBlendValue: { value: 1.65 },
   cameraRotationOffset: { value: 90 },
+  ballRadius: { value: 0.9 },
   metaBallPositions: {
     // value: [...Array(10).keys()].map(idx => {
     //   const angle = idx * 0.2 * Math.PI;
@@ -551,12 +575,12 @@ const MetaballScene: React.FC = () => {
       updatePoints();
 
       uniforms.metaBallPositions.value = points.map(p => {
-        return new THREE.Vector3(p.x, p.y, 0.0).multiplyScalar(10);
+        return new THREE.Vector3(p.x, p.y, p.z).multiplyScalar(4);
       });
 
       for (let i = 0; i < NUM_VERLET_ITERATIONS; ++i) {
         updateSticks();
-        constrainBorders();
+        //constrainBorders();
       }
     }
 
@@ -638,6 +662,14 @@ const MetaballScene: React.FC = () => {
             dispatch({ type: 'cameraRotationOffset', value });
           }}
           label="Camera rotation offset"
+        />
+        <Slider
+          value={stateUniforms.ballRadius.value}
+          range={[0, 3]}
+          update={value => {
+            dispatch({ type: 'ballRadius', value });
+          }}
+          label="Ball Radius"
         />
       </div>
     </>
