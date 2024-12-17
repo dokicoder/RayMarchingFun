@@ -19,14 +19,16 @@ const fragmentShader = `
 uniform float aspect;
 uniform float metaBallBlendValue;
 uniform float cameraRotationOffset;
+uniform vec3 metaBallPositions[ 10 ];
 
 in vec2 _uv;
 
 const int MAX_STEPS = 64;
 // allowed distance from surface
-const float EPSILON = .0001;
+const float EPSILON = .01;
 const float STEP_SIZE = .999; // TODO: why not use 1 here?
 const float OUT_BOUNDS_DISTANCE = 1000.0;
+
 
 float sphereSdf(in vec3 p, in float r) {
     return length(p) - r;
@@ -39,8 +41,8 @@ float opCombine(in float d1, in float d2, in float r) {
 
 float scene(in vec3 p) {
     // TODO: from uniforms
-    float rCenter = 2.2;
-    float rOther = 0.3;
+    float rCenter = 0.9;
+    float rOther = 0.9;
 
     vec3 spherePosCenter = vec3(0.);
     float ballCenter = sphereSdf(p + spherePosCenter, rCenter);
@@ -50,8 +52,8 @@ float scene(in vec3 p) {
     for(int i=0;i<10;++i)
     {
       float angle = float(i) * 0.2 * PI;
-      vec3 spherePosOuter = vec3(cos(angle), -sin(angle), 0.0) * 2.4;
-      float outerBall = sphereSdf(p + spherePosOuter, rOther);
+      //vec3 spherePosOuter = vec3(cos(angle), -sin(angle), 0.0) * 3.4;
+      float outerBall = sphereSdf(p + metaBallPositions[i], rOther);
       
       metaBalls = opCombine(metaBalls, outerBall, metaBallBlendValue);
     }
@@ -212,7 +214,7 @@ void main() {
     gl_FragColor = vec4(_uv, 0., 1.);
   } else {
     vec3 p = cameraOrigin + currentRayDirection * d;
-    gl_FragColor = vec4(shade(cameraOrigin, p, vec3(0.,0., 1.)), 1.0);
+    gl_FragColor = true ? vec4(shade(cameraOrigin, p, vec3(0.,0., 1.)), 1.0) : vec4(1.0, 0.0, 1.0, 0.0);
   }
 
 }`;
@@ -222,6 +224,7 @@ interface MetaballUniforms {
   aspect: IUniform;
   metaBallBlendValue: IUniform;
   cameraRotationOffset: IUniform;
+  metaBallPositions: IUniform;
 }
 
 let mount: HTMLDivElement = undefined;
@@ -235,7 +238,14 @@ let aspect = 1;
 const uniforms: MetaballUniforms = {
   aspect: { value: aspect },
   metaBallBlendValue: { value: 0.5 },
-  cameraRotationOffset: { value: 0 },
+  cameraRotationOffset: { value: 90 },
+  metaBallPositions: {
+    value: [...Array(10).keys()].map(idx => {
+      const angle = idx * 0.2 * Math.PI;
+
+      return new THREE.Vector3(Math.cos(angle), -Math.sin(angle), 0.0).multiplyScalar(3.4);
+    }),
+  },
 };
 
 const material = new THREE.ShaderMaterial({

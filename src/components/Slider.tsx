@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { v4 as randomId } from 'uuid';
 
 export const Slider: React.FC<{ value: number; update: (value: number) => void; label?: string; range?: number[] }> = ({
@@ -11,7 +11,19 @@ export const Slider: React.FC<{ value: number; update: (value: number) => void; 
 
   return (
     <>
-      {label && <label htmlFor={id}>{label}</label>}
+      {label && (
+        <label
+          style={{
+            display: 'inline-block',
+            margin: '10px',
+            minWidth: '200px',
+          }}
+          htmlFor={id}
+        >
+          {label} {Number(value).toFixed(2)}
+        </label>
+      )}
+
       <input
         id={id}
         type="range"
