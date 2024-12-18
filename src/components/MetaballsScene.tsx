@@ -298,6 +298,8 @@ function toggleGravity() {
 const fragmentShader = `
 #define PI 3.1415926538
 
+#define NUM_LIGHTS 3
+
 uniform float aspect;
 uniform float metaBallBlendValue;
 uniform float cameraRotationOffset;
@@ -331,7 +333,7 @@ float scene(in vec3 p) {
 
     float metaBalls = firstBall;
     
-    for(int i=1;i<${NUM_BALLS + 1};++i)
+    for(int i=2;i<${NUM_BALLS + 1};++i)
     {
       float angle = float(i) * 0.2 * PI;
       //vec3 spherePosOuter = vec3(cos(angle), -sin(angle), 0.0) * 3.4;
@@ -410,13 +412,17 @@ vec3 shade (in vec3 ro, in vec3 p, in vec3 albedo) {
     float ao = 1.;
 
     // lights hard-coded as well atm
-    vec3 lightColors[2];
-    lightColors[0] = vec3 (.7, .8, .9)*2.;
-    lightColors[1] = vec3 (.9, .8, .7)*2.;
+    vec3 lightColors[NUM_LIGHTS];
+    lightColors[0] = vec3(.7, .8, .9)*2.;
+    lightColors[1] = vec3(.9, .8, .7)*2.;
 
-    vec3 lightPositions[2];
-    lightPositions[0] = vec3 (-0.5, 0.2, -0.3);
-    lightPositions[1] = vec3 (1., -.5, 0.);
+    lightColors[2] = vec3(.9, .9, .9)*6.;
+
+    vec3 lightPositions[NUM_LIGHTS];
+    lightPositions[0] = vec3(-0.5, 0.2, -0.3);
+    lightPositions[1] = vec3(1., -.5, 0.);
+
+    lightPositions[2] = vec3(10, -2, 7);
 
 	  vec3 N = normalize (nor);
     vec3 V = normalize (ro - p);
@@ -427,7 +433,7 @@ vec3 shade (in vec3 ro, in vec3 p, in vec3 albedo) {
 	           
     // reflectance equation
     vec3 Lo = vec3 (.0);
-    for(int i = 0; i < 2; ++i) 
+    for(int i = 0; i < NUM_LIGHTS; ++i) 
     {
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i] - p);
@@ -520,7 +526,7 @@ let aspect = 1;
 const uniforms: MetaballUniforms = {
   aspect: { value: aspect },
   metaBallBlendValue: { value: 1.65 },
-  cameraRotationOffset: { value: 90 },
+  cameraRotationOffset: { value: 306 },
   ballRadius: { value: 0.9 },
   metaBallPositions: {
     // value: [...Array(10).keys()].map(idx => {
