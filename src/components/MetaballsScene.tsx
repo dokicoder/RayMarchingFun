@@ -324,12 +324,12 @@ float opCombine(in float d1, in float d2, in float r) {
 
 float scene(in vec3 p) {
     // TODO: from uniforms
-    float rCenter = 0.3;
+    
+    //float rCenter = 0.3;
+    //float ballCenter = sphereSdf(p + metaBallPositions[0], rCenter);
+    float firstBall = sphereSdf(p + metaBallPositions[1], ballRadius);
 
-    vec3 spherePosCenter = vec3(0.);
-    float ballCenter = sphereSdf(p + metaBallPositions[0], rCenter);
-
-    float metaBalls = ballCenter;
+    float metaBalls = firstBall;
     
     for(int i=1;i<${NUM_BALLS + 1};++i)
     {
