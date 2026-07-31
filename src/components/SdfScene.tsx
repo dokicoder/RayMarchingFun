@@ -23,6 +23,11 @@ const fragmentShader = `
 uniform float aspect;
 uniform float cameraRotationOffset;
 
+struct Light {
+  vec3 color;
+  vec3 position;
+};
+
 in vec2 _uv;
 
 const int MAX_STEPS = 64;
@@ -40,7 +45,7 @@ float scene(in vec3 p) {
     return sphereSdf(p, 4.0);
 }
 
-vec3 normal (in vec3 p) {
+vec3 gradientNormal (in vec3 p) {
 	float d = scene(p);
   vec3 e = vec3 (.001, .0, .0);
   return normalize (vec3 (scene(p + e.xyy) - d,
@@ -68,11 +73,6 @@ float rayMarch(in vec3 ro, in vec3 rd) {
   return OUT_BOUNDS_DISTANCE;
 }
 
-
-vec3 shade (in vec3 ro, in vec3 p, in vec3 albedo) {
-    return vec3(1.0, 1.0, 0.0);
-}
-
 // #################
 
 // get camera ray for fragment aka uv position
@@ -88,6 +88,32 @@ vec3 cameraRay(in vec2 uv, in vec3 rayOrigin, in vec3 cameraTarget, in float zoo
     vec3 camCenter = rayOrigin + camForward * zoom;
     
     return normalize(camCenter + uv.x * aspect * camRight + uv.y * camUp - rayOrigin);
+}
+
+vec3 diffuse(vec3 lightDir, vec3 normal, vec3 surfaceColor, vec3 lightColor) {
+  return max(0.0, dot( lightDir, normal )) * surfaceColor * lightColor;
+}
+
+vec4 shade(vec3 surfacePos) {
+  vec3 lightPos = vec3(0.0, 3.0, 14.0);
+
+  Light lights[2] = Light[2](
+    Light(vec3(1.0, 1.0, 0.0), vec3(0.0, 3.0, 14.0)),
+    Light(vec3(0.0, 1.0, 1.0), vec3(0.0, 6.0, -5.0))
+  );
+
+  vec3 surfaceColor = vec3(1.0, 0.4, 0.3);
+
+  vec3 color = vec3(0.0);
+
+  for( int i=0; i<2; i++ )
+  {
+		vec3 lightDir = normalize(lights[i].position - surfacePos);
+    vec3 normal = gradientNormal( surfacePos );
+    color += diffuse(lightDir, normal, surfaceColor, lights[i].color);
+  }
+
+  return vec4( color, 1.0);
 }
 
 void main() {
@@ -109,12 +135,13 @@ void main() {
 
   float d = rayMarch (cameraOrigin, currentRayDirection);
 
+  vec3 surfacePos = cameraOrigin + d * currentRayDirection;
+
   if(d >= OUT_BOUNDS_DISTANCE) {
-  
     gl_FragColor = vec4(_uv, 0., 1.);
   } else {
     vec3 p = cameraOrigin + currentRayDirection * d;
-    gl_FragColor = true ? vec4(shade(cameraOrigin, p, vec3(0.,1., .4)), 1.0) : vec4(0.5, 0.0, 1.0, 0.0);
+    gl_FragColor = shade(surfacePos);
   }
 
 }`;
