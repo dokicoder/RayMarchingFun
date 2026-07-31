@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
-import { v4 as randomId } from 'uuid';
+import React from 'react';
 
-export const Slider: React.FC<{ value: number; update: (value: number) => void; label?: string; range?: number[] }> = ({
+export const Slider: React.FC<{ value: number; update: (value: number) => void; label?: string; range?: number[], id: string }> = ({
+  id,
   value,
   label,
   update,
   range: [min, max] = [0, 3],
 }) => {
-  const [id] = useState<string>(`slider-${randomId()}`);
-
   return (
     <>
       {label && (

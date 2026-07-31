@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer } from 'react';
+import React, { useEffect, useReducer, useRef } from 'react';
 import * as THREE from 'three';
 import { Scene, WebGLRenderer, Camera, Clock, IUniform } from 'three';
 import { Slider } from './Slider';
@@ -125,10 +125,9 @@ interface MetaballUniforms {
   cameraRotationOffset: IUniform;
 }
 
-let mount: HTMLDivElement = undefined;
 let camera: Camera = undefined;
 let scene: THREE.Scene = undefined;
-let renderer: WebGLRenderer | undefined = undefined;
+let renderer: WebGLRenderer = undefined;
 let frameId: number = undefined;
 
 let aspect = 1;
@@ -169,7 +168,7 @@ const Plane = () => {
   return new THREE.Mesh(geometry, material);
 };
 
-const MetaballScene: React.FC = () => {
+export const SdfScene: React.FC = () => {
   const renderScene = () => {
     renderer.render(scene, camera);
   };
@@ -204,14 +203,20 @@ const MetaballScene: React.FC = () => {
 
   const [stateUniforms, dispatch] = useReducer(reducer, uniforms);
 
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    const { clientWidth: width, clientHeight: height } = mount;
+    if (!canvasContainerRef.current) {
+      return
+    }
+
+    const { clientWidth: width, clientHeight: height } = canvasContainerRef.current;
+
+    if (canvasContainerRef.current.children.length) {
+      canvasContainerRef.current.removeChild(renderer.domElement);
+    }
 
     uniforms.aspect.value = width / height;
-
-    if (mount.children.length) {
-      mount.innerHTML = '';
-    }
 
     // add scene
     scene = new Scene();
@@ -223,23 +228,24 @@ const MetaballScene: React.FC = () => {
     renderer = new WebGLRenderer({ antialias: false });
     renderer.setClearColor('#880400');
     renderer.setSize(width, height);
-    mount.appendChild(renderer.domElement);
+    canvasContainerRef.current.appendChild(renderer.domElement);
 
     scene.add(Plane());
     startRenderLoop();
 
     return () => {
       stop();
-      if (mount) mount.removeChild(renderer.domElement);
+      if (canvasContainerRef.current) canvasContainerRef.current.removeChild(renderer.domElement);
     };
   }, []);
 
   return (
     <>
-      <div style={{ width: '1300px', height: '800px' }} ref={m => (mount = m)} />
+      <div style={{ width: '1300px', height: '800px' }} ref={canvasContainerRef} />
       {/* TODO: debounce */}
       <div style={{ width: '1300px' }}>
         <Slider
+          id="cameraRotation"
           value={stateUniforms.cameraRotationOffset.value}
           range={[0, 360]}
           update={value => {
@@ -251,5 +257,3 @@ const MetaballScene: React.FC = () => {
     </>
   );
 };
-
-export default MetaballScene;

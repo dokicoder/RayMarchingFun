@@ -1,5 +1,5 @@
-import MetaballsScene from './MetaballsScene';
+import { SdfScene } from './SdfScene';
 
-const App = () => <MetaballsScene />;
+const App = () => <SdfScene />;
 
 export default App;
