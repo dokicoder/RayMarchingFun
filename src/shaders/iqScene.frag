@@ -1,13 +1,6 @@
-// Copyright Inigo Quilez, 2016 - https://iquilezles.org/
-// I am the sole copyright owner of this Work.
-// You cannot host, display, distribute or share this Work in any form,
-// including physical and digital. You cannot use this Work in any
-// commercial or non-commercial product, website or project. You cannot
-// sell this Work and you cannot mint an NFTs of it.
-// I share this Work for educational purposes, and you can link to it,
-// through an URL, proper attribution and unmodified screenshot, as part
-// of your educational material. If these conditions are too restrictive
-// please contact me and we'll definitely work it out.
+// The MIT License
+// Copyright © 2013 Inigo Quilez
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // A list of useful distance function to simple primitives. All
 // these functions (except for ellipsoid) return an exact
@@ -18,32 +11,13 @@
 // List of other 3D SDFs:
 //    https://www.shadertoy.com/playlist/43cXRl
 // and
-//    http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+//    https://iquilezles.org/articles/distfunctions
 
-/*
-uniform vec3      iResolution;
-uniform float     iTime;
-uniform vec4      iMouse;
-uniform int       iFrame;
-*/
-
-uniform float aspect;
-
-const float iTime = 1.5295;
-const vec3 iResolution = vec3(1300.0, 800.0, 1.0);
-const vec4 iMouse = vec4(0.0, 0.0, 0.0, 0.0);
-int iFrame = 1;
-
-varying vec2 _uv;
-
-
-#define HW_PERFORMANCE 1
-
-#if HW_PERFORMANCE==0
-#define AA 1
-#else
-#define AA 2   // make this 2 or 3 for antialiasing
-#endif
+//#if HW_PERFORMANCE==0
+#define AA 0
+//#else
+//#define AA 2   // make this 2 or 3 for antialiasing
+//#endif
 
 //------------------------------------------------------------------
 float dot2( in vec2 v ) { return dot(v,v); }
@@ -66,7 +40,7 @@ float sdBox( vec3 p, vec3 b )
     return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
 }
 
-float sdBoundingBox( vec3 p, vec3 b, float e )
+float sdBoxFrame( vec3 p, vec3 b, float e )
 {
        p = abs(p  )-b;
   vec3 q = abs(p+e)-e;
@@ -76,12 +50,14 @@ float sdBoundingBox( vec3 p, vec3 b, float e )
       length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
       length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
 }
+
 float sdEllipsoid( in vec3 p, in vec3 r ) // approximated
 {
     float k0 = length(p/r);
     float k1 = length(p/(r*r));
     return k0*(k0-1.0)/k1;
 }
+
 
 float sdTorus( vec3 p, vec2 t )
 {
@@ -94,6 +70,7 @@ float sdCappedTorus(in vec3 p, in vec2 sc, in float ra, in float rb)
     float k = (sc.y*p.x>sc.x*p.y) ? dot(p.xy,sc) : length(p.xy);
     return sqrt( dot(p,p) + ra*ra - 2.0*ra*k ) - rb;
 }
+
 
 float sdHexPrism( vec3 p, vec2 h )
 {
@@ -327,6 +304,31 @@ float sdRhombus(vec3 p, float la, float lb, float h, float ra)
     return min(max(q.x,q.y),0.0) + length(max(q,0.0));
 }
 
+float sdHorseshoe( in vec3 p, in vec2 c, in float r, in float le, vec2 w )
+{
+    p.x = abs(p.x);
+    float l = length(p.xy);
+    p.xy = mat2(-c.x, c.y, 
+              c.y, c.x)*p.xy;
+    p.xy = vec2((p.y>0.0 || p.x>0.0)?p.x:l*sign(-c.x),
+                (p.x>0.0)?p.y:l );
+    p.xy = vec2(p.x,abs(p.y-r))-vec2(le,0.0);
+    
+    vec2 q = vec2(length(max(p.xy,0.0)) + min(0.0,max(p.x,p.y)),p.z);
+    vec2 d = abs(q) - w;
+    return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+}
+
+float sdU( in vec3 p, in float r, in float le, vec2 w )
+{
+    p.x = (p.y>0.0) ? abs(p.x) : length(p.xy);
+    p.x = abs(p.x-r);
+    p.y = p.y - le;
+    float k = max(p.x,p.y);
+    vec2 q = vec2( (k<0.0) ? -k : length(max(p.xy,0.0)), abs(p.z) ) - w;
+    return length(max(q,0.0)) + min(max(q.x,q.y),0.0);
+}
+
 //------------------------------------------------------------------
 
 vec2 opU( vec2 d1, vec2 d2 )
@@ -342,18 +344,20 @@ vec2 opU( vec2 d1, vec2 d2 )
 
 vec2 map( in vec3 pos )
 {
-    vec2 res = vec2( 1e10, 0.0 );
+    vec2 res = vec2( pos.y, 0.0 );
 
+    // bounding box
+    if( sdBox( pos-vec3(-2.0,0.3,0.25),vec3(0.3,0.3,1.0) )<res.x )
     {
       res = opU( res, vec2( sdSphere(    pos-vec3(-2.0,0.25, 0.0), 0.25 ), 26.9 ) );
+	  res = opU( res, vec2( sdRhombus(  (pos-vec3(-2.0,0.25, 1.0)).xzy, 0.15, 0.25, 0.04, 0.08 ),17.0 ) );
     }
 
     // bounding box
     if( sdBox( pos-vec3(0.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
-    // more primitives
-    res = opU( res, vec2( sdBoundingBox( pos-vec3( 0.0,0.25, 0.0), vec3(0.3,0.25,0.2), 0.025 ), 16.9 ) );
-	res = opU( res, vec2( sdTorus(      (pos-vec3( 0.0,0.30, 1.0)).xzy, vec2(0.25,0.05) ), 25.0 ) );
+	res = opU( res, vec2( sdCappedTorus((pos-vec3( 0.0,0.30, 1.0))*vec3(1,-1,1), vec2(0.866025,-0.5), 0.25, 0.05), 25.0) );
+    res = opU( res, vec2( sdBoxFrame(    pos-vec3( 0.0,0.25, 0.0), vec3(0.3,0.25,0.2), 0.025 ), 16.9 ) );
 	res = opU( res, vec2( sdCone(        pos-vec3( 0.0,0.45,-1.0), vec2(0.6,0.8),0.45 ), 55.0 ) );
     res = opU( res, vec2( sdCappedCone(  pos-vec3( 0.0,0.25,-2.0), 0.25, 0.25, 0.1 ), 13.67 ) );
     res = opU( res, vec2( sdSolidAngle(  pos-vec3( 0.0,0.00,-3.0), vec2(3,4)/5.0, 0.4 ), 49.13 ) );
@@ -362,8 +366,7 @@ vec2 map( in vec3 pos )
     // bounding box
     if( sdBox( pos-vec3(1.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
-    // more primitives
-	res = opU( res, vec2( sdCappedTorus((pos-vec3( 1.0,0.30, 1.0))*vec3(1,-1,1), vec2(0.866025,-0.5), 0.25, 0.05), 8.5) );
+	res = opU( res, vec2( sdTorus(      (pos-vec3( 1.0,0.30, 1.0)).xzy, vec2(0.25,0.05) ), 7.1 ) );
     res = opU( res, vec2( sdBox(         pos-vec3( 1.0,0.25, 0.0), vec3(0.3,0.25,0.1) ), 3.0 ) );
     res = opU( res, vec2( sdCapsule(     pos-vec3( 1.0,0.00,-1.0),vec3(-0.1,0.1,-0.1), vec3(0.2,0.4,0.2), 0.1  ), 31.9 ) );
 	res = opU( res, vec2( sdCylinder(    pos-vec3( 1.0,0.25,-2.0), vec2(0.15,0.25) ), 8.0 ) );
@@ -373,21 +376,19 @@ vec2 map( in vec3 pos )
     // bounding box
     if( sdBox( pos-vec3(-1.0,0.35,-1.0),vec3(0.35,0.35,2.5))<res.x )
     {
-    // more primitives
 	res = opU( res, vec2( sdPyramid(    pos-vec3(-1.0,-0.6,-3.0), 1.0 ), 13.56 ) );
 	res = opU( res, vec2( sdOctahedron( pos-vec3(-1.0,0.15,-2.0), 0.35 ), 23.56 ) );
     res = opU( res, vec2( sdTriPrism(   pos-vec3(-1.0,0.15,-1.0), vec2(0.3,0.05) ),43.5 ) );
     res = opU( res, vec2( sdEllipsoid(  pos-vec3(-1.0,0.25, 0.0), vec3(0.2, 0.25, 0.05) ), 43.17 ) );
-	res = opU( res, vec2( sdRhombus(   (pos-vec3(-1.0,0.34, 1.0)).xzy, 0.15, 0.25, 0.04, 0.08 ),17.0 ) );
+    res = opU( res, vec2( sdHorseshoe(  pos-vec3(-1.0,0.25, 1.0), vec2(cos(1.3),sin(1.3)), 0.2, 0.3, vec2(0.03,0.08) ), 11.5 ) );
     }
 
     // bounding box
     if( sdBox( pos-vec3(2.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
-    // more primitives
     res = opU( res, vec2( sdOctogonPrism(pos-vec3( 2.0,0.2,-3.0), 0.2, 0.05), 51.8 ) );
-    res = opU( res, vec2( sdCylinder(    pos-vec3( 2.0,0.15,-2.0), vec3(0.1,-0.1,0.0), vec3(-0.2,0.35,0.1), 0.08), 31.2 ) );
-	res = opU( res, vec2( sdCappedCone(  pos-vec3( 2.0,0.10,-1.0), vec3(0.1,0.0,0.0), vec3(-0.2,0.40,0.1), 0.15, 0.05), 46.1 ) );
+    res = opU( res, vec2( sdCylinder(    pos-vec3( 2.0,0.14,-2.0), vec3(0.1,-0.1,0.0), vec3(-0.2,0.35,0.1), 0.08), 31.2 ) );
+	res = opU( res, vec2( sdCappedCone(  pos-vec3( 2.0,0.09,-1.0), vec3(0.1,0.0,0.0), vec3(-0.2,0.40,0.1), 0.15, 0.05), 46.1 ) );
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.15, 0.0), vec3(0.1,0.0,0.0), vec3(-0.1,0.35,0.1), 0.15, 0.05), 51.7 ) );
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.20, 1.0), 0.2, 0.1, 0.3 ), 37.0 ) );
     }
@@ -395,7 +396,7 @@ vec2 map( in vec3 pos )
     return res;
 }
 
-// http://iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
+// https://iquilezles.org/articles/boxfunctions
 vec2 iBox( in vec3 ro, in vec3 rd, in vec3 rad ) 
 {
     vec3 m = 1.0/rd;
@@ -447,7 +448,7 @@ vec2 raycast( in vec3 ro, in vec3 rd )
     return res;
 }
 
-// http://iquilezles.org/www/articles/rmshadows/rmshadows.htm
+// https://iquilezles.org/articles/rmshadows
 float calcSoftshadow( in vec3 ro, in vec3 rd, in float mint, in float tmax )
 {
     // bounding volume
@@ -459,24 +460,27 @@ float calcSoftshadow( in vec3 ro, in vec3 rd, in float mint, in float tmax )
     {
 		float h = map( ro + rd*t ).x;
         float s = clamp(8.0*h/t,0.0,1.0);
-        res = min( res, s*s*(3.0-2.0*s) );
-        t += clamp( h, 0.02, 0.2 );
+        res = min( res, s );
+        t += clamp( h, 0.01, 0.2 );
         if( res<0.004 || t>tmax ) break;
     }
-    return clamp( res, 0.0, 1.0 );
+    res = clamp( res, 0.0, 1.0 );
+    return res*res*(3.0-2.0*res);
 }
 
-// http://iquilezles.org/www/articles/normalsSDF/normalsSDF.htm
+// https://iquilezles.org/articles/normalsSDF
 vec3 calcNormal( in vec3 pos )
 {
 #if 0
+    // do NOT call map() many times inside calcNormal()
     vec2 e = vec2(1.0,-1.0)*0.5773*0.0005;
     return normalize( e.xyy*map( pos + e.xyy ).x + 
 					  e.yyx*map( pos + e.yyx ).x + 
 					  e.yxy*map( pos + e.yxy ).x + 
 					  e.xxx*map( pos + e.xxx ).x );
 #else
-    // inspired by tdhooper and klems - a way to prevent the compiler from inlining map() 4 times
+    // instead put it only once and in a loop to prevet
+    // code expansion - inspired by tdhooper and klems - a way to prevent the compiler from inlining map() 4 times
     vec3 n = vec3(0.0);
     for( int i=ZERO; i<4; i++ )
     {
@@ -488,6 +492,7 @@ vec3 calcNormal( in vec3 pos )
 #endif    
 }
 
+// https://iquilezles.org/articles/nvscene2008/rwwtt.pdf
 float calcAO( in vec3 pos, in vec3 nor )
 {
 	float occ = 0.0;
@@ -503,7 +508,21 @@ float calcAO( in vec3 pos, in vec3 nor )
     return clamp( 1.0 - 3.0*occ, 0.0, 1.0 ) * (0.5+0.5*nor.y);
 }
 
-// http://iquilezles.org/www/articles/checkerfiltering/checkerfiltering.htm
+// checkers, in mod form
+float checkers2( in vec2 p )
+{
+    vec2 q = floor(p);
+    //return q.x;
+        return .0;//mod(q.x, 2.0);
+}
+
+float checkers( in vec2 p )
+{
+    vec2 s = sign(fract(p*.5)-.5);
+    return .5 - .5*s.x*s.y;
+}
+
+// https://iquilezles.org/articles/checkerfiltering
 float checkersGradBox( in vec2 p, in vec2 dpdx, in vec2 dpdy )
 {
     // filter kernel
@@ -517,7 +536,7 @@ float checkersGradBox( in vec2 p, in vec2 dpdx, in vec2 dpdy )
 vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
 { 
     // background
-    vec3 col = vec3(1.0, 0.4, 0.9);// - max(rd.y,0.0)*0.3;
+    vec3 col = vec3(0.7, 0.7, 0.9) - max(rd.y,0.0)*0.3;
     
     // raycast scene
     vec2 res = raycast(ro,rd);
@@ -539,7 +558,8 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
             vec3 dpdx = ro.y*(rd/rd.y-rdx/rdx.y);
             vec3 dpdy = ro.y*(rd/rd.y-rdy/rdy.y);
 
-            float f = checkersGradBox( 3.0*pos.xz, 3.0*dpdx.xz, 3.0*dpdy.xz );
+            //float f = checkersGradBox( 3.0*pos.xz, 3.0*dpdx.xz, 3.0*dpdy.xz );
+            float f = checkers2( 2.0 * pos.xz );
             col = 0.15 + f*vec3(0.05);
             ks = 0.4;
         }
@@ -555,7 +575,7 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
             vec3  hal = normalize( lig-rd );
             float dif = clamp( dot( nor, lig ), 0.0, 1.0 );
           //if( dif>0.0001 )
-        	      dif *= calcSoftshadow( pos, lig, 0.02, 2.5 );
+        	      //dif *= calcSoftshadow( pos, lig, 0.02, 2.5 );
 			float spe = pow( clamp( dot( nor, hal ), 0.0, 1.0 ),16.0);
                   spe *= dif;
                   spe *= 0.04+0.96*pow(clamp(1.0-dot(hal,lig),0.0,1.0),5.0);
@@ -611,64 +631,44 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	float time = 32.0 + iTime*1.5;
 
     // camera	
-    vec3 ta = vec3( 0.5, -0.5, -0.6 );
-    vec3 ro = ta + vec3( 4.5*cos(0.1*time + 7.0*mo.x), 1.3 + 2.0*mo.y, 4.5*sin(0.1*time + 7.0*mo.x) );
+    vec3 ta = vec3( 0.25, -0.75, -0.75 );
+    vec3 ro = ta + vec3( 4.5*cos(0.1*time + 7.0*mo.x), 2.2, 4.5*sin(0.1*time + 7.0*mo.x) );
     // camera-to-world transformation
     mat3 ca = setCamera( ro, ta, 0.0 );
 
     vec3 tot = vec3(0.0);
-#if AA>1
-    for( int m=ZERO; m<AA; m++ )
-    for( int n=ZERO; n<AA; n++ )
-    {
-        // pixel coordinates
-        vec2 o = vec2(float(m),float(n)) / float(AA) - 0.5;
-        vec2 p = (2.0*(fragCoord+o)-iResolution.xy)/iResolution.y;
-#else    
-        vec2 p = (2.0*fragCoord-iResolution.xy)/iResolution.y;
-#endif
 
-        // focal length
-        const float fl = 2.5;
-        
-        // ray direction
-        vec3 rd = ca * normalize( vec3(p,fl) );
+    vec2 p = (2.0*fragCoord-iResolution.xy)/iResolution.y;
 
-         // ray differentials
-        vec2 px = (2.0*(fragCoord+vec2(1.0,0.0))-iResolution.xy)/iResolution.y;
-        vec2 py = (2.0*(fragCoord+vec2(0.0,1.0))-iResolution.xy)/iResolution.y;
-        vec3 rdx = ca * normalize( vec3(px,fl) );
-        vec3 rdy = ca * normalize( vec3(py,fl) );
-        
-        // render	
-        vec3 col = render( ro, rd, rdx, rdy );
+    // focal length
+    // its like "ray movement speed in z direction"
+    // long means close up, short means far away
+    const float fl = 2.5;
 
-        // gain
-        // col = col*3.0/(2.5+col);
-        
-		// gamma
-        col = pow( col, vec3(0.4545) );
+    // ray direction
+    vec3 rd = ca * normalize( vec3(p,fl) );
 
-        tot += col;
-#if AA>1
-    }
-    tot /= float(AA*AA);
-#endif
+     // ray differentials
+    vec2 px = (2.0*(fragCoord+vec2(1.0,0.0))-iResolution.xy)/iResolution.y;
+    vec2 py = (2.0*(fragCoord+vec2(0.0,1.0))-iResolution.xy)/iResolution.y;
+    
+    // differential of the current pixel in xy direction - TODO: how exactly?
+    // why is the focal length added here?
+    // camera transform transforns and scales the normalized orthogonal vectors according to projection
+    vec3 rdx = ca * normalize( vec3(px, fl) );
+    vec3 rdy = ca * normalize( vec3(py, fl) );
+
+    // render	
+    vec3 col = render( ro, rd, rdx, rdy );
+
+    // gain
+    // col = col*3.0/(2.5+col);
+
+    // gamma
+    //col = pow( col, vec3(0.4545) );
+
+    tot += col;
+
     
     fragColor = vec4( tot, 1.0 );
-}
-
-void main() 
-{
-    vec2 uv = (2.0 * _uv - vec2(1.0, 1.0));
-    // correct for canvas aspect by scaling vertically
-    //uv *=  vec2(aspect, 1.0);
-    uv *= iResolution.xy;
-
-    vec4 fragColor = vec4(1.0);
-    
-    mainImage(fragColor, uv);
-
-    gl_FragColor = vec4(_uv, 0, 1);
-    gl_FragColor = fragColor;
 }
