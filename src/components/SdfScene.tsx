@@ -159,6 +159,9 @@ void main() {
     // gl_FragColor = shadeColor;
   }
 
+  // gamma correction - another knob to tweak
+  //shadeColor = pow( shadeColor, vec4(0.25) );
+
   // this is the 4 color print shader part
 
   // TODO: let me pick these colors
@@ -178,7 +181,9 @@ void main() {
   float dist = length(nearest);
   
   // red chanel looks great as well
-  float radius = sqrt(1.0-shadeColor.g);
+  // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
+  // TODO: 
+  float radius = 1.0 * pow(1.0-shadeColor.g, 0.5);
 
   vec3 fragcolor = mix(black, white, antiAliasedStep(radius, dist));
   gl_FragColor = vec4(fragcolor, 1.0);
