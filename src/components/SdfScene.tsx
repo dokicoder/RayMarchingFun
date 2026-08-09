@@ -130,7 +130,7 @@ float antiAliasedStep(float threshold, float value) {
 
 // Distance to nearest point in a grid of
 // (frequency x frequency) points over the unit square
-float frequency = 100.0;
+float frequency = 90.0;
 
 vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   // TODO: let me pick these colors
@@ -148,6 +148,42 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   float radius = 1.0 * pow(1.0-shadeColor.g, 0.5);
 
   return mix(black, white, antiAliasedStep(radius, dist));
+}
+
+vec3 cmykPrint(vec2 st, vec3 shadeColor) {
+  vec4 cmyk;
+  //cmyk.xyz = 1.0 - shadeColor;
+  //cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
+  //cmyk.xyz -= cmyk.w; // Subtract K equivalent from CMY
+
+  cmyk.w = min( 1.0 - shadeColor.r, min(1.0 - shadeColor.g, 1.0 - shadeColor.b) );
+  cmyk.r = (1.0 - shadeColor.r - cmyk.w)/(1.0 - cmyk.w);
+  cmyk.g = (1.0 - shadeColor.g - cmyk.w)/(1.0 - cmyk.w);
+  cmyk.b = (1.0 - shadeColor.b - cmyk.w)/(1.0 - cmyk.w);
+
+  vec3 white = vec3(1.0);
+  vec3 black = vec3(0.1);
+
+  vec2 Kst = frequency * mat2(0.707, -0.707, 0.707, 0.707) * st;
+  vec2 Kuv = 2.0 * fract(Kst) - 1.0;
+  float k = antiAliasedStep(0.0, sqrt(cmyk.w)-length(Kuv));
+  vec2 Cst = frequency * mat2(0.966, -0.259, 0.259, 0.966) * st;
+  vec2 Cuv = 2.0 * fract(Cst) - 1.0;
+  float c = antiAliasedStep(0.0, sqrt(cmyk.x)-length(Cuv));
+  vec2 Mst = frequency*mat2(0.966, 0.259, -0.259, 0.966) * st;
+  vec2 Muv = 2.0*fract(Mst)-1.0;
+  float m = antiAliasedStep(0.0, sqrt(cmyk.y)-length(Muv));
+  vec2 Yst = frequency * st; // 0 deg
+  vec2 Yuv = 2.0*fract(Yst) - 1.0;
+  float y = antiAliasedStep(0.0, sqrt(cmyk.z)-length(Yuv));
+
+  vec3 rgbscreen = vec3(
+    (1.0 - c) * (1.0 - cmyk.w),
+    (1.0 - m) * (1.0 - cmyk.w),
+    (1.0 - y) * (1.0 - cmyk.w)
+  );
+
+  return mix(rgbscreen, black,  0.2*k);
 }
 
 void main() {
@@ -190,7 +226,9 @@ void main() {
 
 
   gl_FragColor = vec4(shadeColor, 1.0);
-  gl_FragColor = vec4(monochromePrint(st, shadeColor), 1.0);
+  //gl_FragColor = vec4(monochromePrint(st, shadeColor), 1.0);
+  gl_FragColor = vec4(cmykPrint(st, shadeColor), 1.0);
+    
 
 }`;
 
