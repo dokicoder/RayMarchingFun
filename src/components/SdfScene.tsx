@@ -98,7 +98,7 @@ vec3 diffuse(vec3 lightDir, vec3 normal, vec3 surfaceColor, vec3 lightColor) {
   return max(0.0, dot( lightDir, normal )) * surfaceColor * lightColor;
 }
 
-vec4 shade(vec3 surfacePos) {
+vec3 shade(vec3 surfacePos) {
   vec3 lightPos = vec3(0.0, 3.0, 14.0);
 
   Light lights[2] = Light[2](
@@ -117,7 +117,7 @@ vec4 shade(vec3 surfacePos) {
     color += diffuse(lightDir, normal, surfaceColor, lights[i].color);
   }
 
-  return vec4( color, 1.0);
+  return color;
 }
 
 // performs smoothstep instead of step, calculating the kernel size
@@ -126,6 +126,28 @@ float antiAliasedStep(float threshold, float value) {
   float afwidth = 0.7 * length( vec2(dFdx(value), dFdy(value)) );
  
   return smoothstep(threshold-afwidth, threshold+afwidth, value);
+}
+
+// Distance to nearest point in a grid of
+// (frequency x frequency) points over the unit square
+float frequency = 100.0;
+
+vec3 monochromePrint(vec2 st, vec3 shadeColor) {
+  // TODO: let me pick these colors
+  vec3 white = vec3(1.0, 1.0, 1.0);
+  vec3 black = vec3(0.0, 0.0, 0.0);
+
+  st = mat2(0.707, -0.707, 0.707, 0.707) * st;
+
+  vec2 nearest = 2.0 * fract(frequency * st) - 1.0;
+  float dist = length(nearest);
+  
+  // red chanel looks great as well
+  // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
+  // TODO: 
+  float radius = 1.0 * pow(1.0-shadeColor.g, 0.5);
+
+  return mix(black, white, antiAliasedStep(radius, dist));
 }
 
 void main() {
@@ -149,44 +171,26 @@ void main() {
 
   vec3 surfacePos = cameraOrigin + d * currentRayDirection;
 
-  vec4 shadeColor;
+  vec3 shadeColor;
 
   if(d >= OUT_BOUNDS_DISTANCE) {
-    shadeColor = vec4(_uv, 0., 1.);
+    shadeColor = vec3(_uv, 0.0);
   } else {
     vec3 p = cameraOrigin + currentRayDirection * d;
     shadeColor = shade(surfacePos);
-    // gl_FragColor = shadeColor;
+    // gl_FragColor = vec4(shadeColor, 1.0);
   }
 
   // gamma correction - another knob to tweak
   //shadeColor = pow( shadeColor, vec4(0.25) );
 
-  // this is the 4 color print shader part
-
-  // TODO: let me pick these colors
-  vec3 white = vec3(1.0, 1.0, 1.0);
-  vec3 black = vec3(0.0, 0.0, 0.0);
+  // this is the print shader part
 
   vec2 st = _uv * vec2(aspect, 1.0);
-  st = mat2(0.707, -0.707, 0.707, 0.707) * st;
 
-  float afwidth = 0.7 * length( dFdx(st) + dFdy(st) );
 
-  // Distance to nearest point in a grid of
-  // (frequency x frequency) points over the unit square
-  float frequency = 100.0;
-
-  vec2 nearest = 2.0*fract(frequency * st) - 1.0;
-  float dist = length(nearest);
-  
-  // red chanel looks great as well
-  // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
-  // TODO: 
-  float radius = 1.0 * pow(1.0-shadeColor.g, 0.5);
-
-  vec3 fragcolor = mix(black, white, antiAliasedStep(radius, dist));
-  gl_FragColor = vec4(fragcolor, 1.0);
+  gl_FragColor = vec4(shadeColor, 1.0);
+  gl_FragColor = vec4(monochromePrint(st, shadeColor), 1.0);
 
 }`;
 
