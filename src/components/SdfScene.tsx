@@ -5,6 +5,8 @@ import { Slider } from './Slider';
 
 
 const vertexShader: string = `
+precision highp float;
+
 out vec2 _uv;
 
 void main() {
@@ -16,6 +18,8 @@ void main() {
 
 
 const fragmentShader = `
+precision highp float;
+
 #define PI 3.1415926538
 
 #define NUM_LIGHTS 3
@@ -116,6 +120,12 @@ vec4 shade(vec3 surfacePos) {
   return vec4( color, 1.0);
 }
 
+float aastep(float threshold, float value) {
+  float afwidth = 0.7 * length(vec2(dFdx(value), dFdy(value)));
+ 
+  return smoothstep(threshold-afwidth, threshold+afwidth, value);
+  }
+
 void main() {
   // uv, does not need aspect, this is implicit in the camera ray
   // map uv from [0,1] auf [-1,1]
@@ -137,12 +147,37 @@ void main() {
 
   vec3 surfacePos = cameraOrigin + d * currentRayDirection;
 
+  vec4 shadeColor;
+
   if(d >= OUT_BOUNDS_DISTANCE) {
-    gl_FragColor = vec4(_uv, 0., 1.);
+    shadeColor = vec4(_uv, 0., 1.);
   } else {
     vec3 p = cameraOrigin + currentRayDirection * d;
-    gl_FragColor = shade(surfacePos);
+    shadeColor = shade(surfacePos);
+    // gl_FragColor = shadeColor;
   }
+
+  // this is the 4 color print shader part
+
+  vec3 white = vec3(1.0, 1.0, 1.0);
+  vec3 black = vec3(0.0, 0.0, 0.0);
+
+  vec2 st = _uv * vec2(aspect, 1.0);
+  st = mat2(0.707, -0.707, 0.707, 0.707) * st;
+
+  float afwidth = 0.7 * length( dFdx(st) + dFdy(st) );
+
+  // Distance to nearest point in a grid of
+  // (frequency x frequency) points over the unit square
+  float frequency = 100.0;
+
+  vec2 nearest = 2.0*fract(frequency * st) - 1.0;
+  float dist = length(nearest);
+  
+  float radius = sqrt(1.0-shadeColor.g);
+
+  vec3 fragcolor = mix(black, white, aastep(radius, dist));
+  gl_FragColor = vec4(fragcolor, 1.0);
 
 }`;
 
