@@ -120,11 +120,13 @@ vec4 shade(vec3 surfacePos) {
   return vec4( color, 1.0);
 }
 
-float aastep(float threshold, float value) {
-  float afwidth = 0.7 * length(vec2(dFdx(value), dFdy(value)));
+// performs smoothstep instead of step, calculating the kernel size
+// using texture coordinates of screen-space render squad, thereby antialiasing the step
+float antiAliasedStep(float threshold, float value) {
+  float afwidth = 0.7 * length( vec2(dFdx(value), dFdy(value)) );
  
   return smoothstep(threshold-afwidth, threshold+afwidth, value);
-  }
+}
 
 void main() {
   // uv, does not need aspect, this is implicit in the camera ray
@@ -159,6 +161,7 @@ void main() {
 
   // this is the 4 color print shader part
 
+  // TODO: let me pick these colors
   vec3 white = vec3(1.0, 1.0, 1.0);
   vec3 black = vec3(0.0, 0.0, 0.0);
 
@@ -174,9 +177,10 @@ void main() {
   vec2 nearest = 2.0*fract(frequency * st) - 1.0;
   float dist = length(nearest);
   
+  // red chanel looks great as well
   float radius = sqrt(1.0-shadeColor.g);
 
-  vec3 fragcolor = mix(black, white, aastep(radius, dist));
+  vec3 fragcolor = mix(black, white, antiAliasedStep(radius, dist));
   gl_FragColor = vec4(fragcolor, 1.0);
 
 }`;
