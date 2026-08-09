@@ -98,6 +98,17 @@ vec3 diffuse(vec3 lightDir, vec3 normal, vec3 surfaceColor, vec3 lightColor) {
   return max(0.0, dot( lightDir, normal )) * surfaceColor * lightColor;
 }
 
+vec3 specular(vec3 lightDir, vec3 normal, vec3 viewDir) {
+  vec3 halfVector = normalize(lightDir + viewDir);
+  float specAmount = -dot(normal, halfVector);
+
+  float specTerm = 400.0;
+
+  float specularIntensity = pow( clamp(specAmount, 0.0, 1.0), specTerm);
+
+  return vec3(specularIntensity);
+}
+
 vec3 shade(vec3 surfacePos) {
   vec3 lightPos = vec3(0.0, 3.0, 14.0);
 
@@ -107,6 +118,7 @@ vec3 shade(vec3 surfacePos) {
   );
 
   vec3 surfaceColor = vec3(1.0, 0.4, 0.3);
+  vec3 viewDir = -surfacePos;
 
   vec3 color = vec3(0.0);
 
@@ -115,6 +127,8 @@ vec3 shade(vec3 surfacePos) {
 		vec3 lightDir = normalize(lights[i].position - surfacePos);
     vec3 normal = gradientNormal( surfacePos );
     color += diffuse(lightDir, normal, surfaceColor, lights[i].color);
+    color += specular(lightDir, normal, viewDir);
+    color = clamp(color, vec3(0.0), vec3(1.0));
   }
 
   return color;
@@ -130,7 +144,7 @@ float antiAliasedStep(float threshold, float value) {
 
 // Distance to nearest point in a grid of
 // (frequency x frequency) points over the unit square
-float frequency = 90.0;
+float frequency = 120.0;
 
 vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   // TODO: let me pick these colors
@@ -145,7 +159,10 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   // red chanel looks great as well
   // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
   // TODO: 
-  float radius = 1.0 * pow(1.0-shadeColor.g, 0.5);
+
+  float value = dot( vec3(0.2126, 0.7152, 0.0722), shadeColor );
+
+  float radius = 1.0 * pow(1.0 - value, 0.5);
 
   return mix(black, white, antiAliasedStep(radius, dist));
 }
@@ -204,60 +221,11 @@ vec3 cmykPrint(vec2 st, vec3 shadeColor) {
 
 ////////////////
 ////////////////
-  
 
-// 2D simplex noise
- 
-// Description : Array- and textureless GLSL 2D simplex noise.
-// Author : Ian McEwan, Ashima Arts. Version: 20110822
-// Copyright (C) 2011 Ashima Arts. All rights reserved.
-// Distributed under the MIT License. See LICENSE file.
-// https://github.com/ashima/webgl-noise
- 
-vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec3 permute(vec3 x) { return mod289((( x * 34.0) + 1.0) * x); }
- 
-float snoise(vec2 v) {
-  const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
-                      0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
-                     -0.577350269189626,  // -1.0 + 2.0 * C.x
-                      0.024390243902439); // 1.0 / 41.0
-  // First corner
-  vec2 i = floor(v + dot(v, C.yy) );
-  vec2 x0 = v - i + dot(i, C.xx);
-  // Other corners
-  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-  vec4 x12 = x0.xyxy + C.xxzz;
-  x12.xy -= i1;
-  // Permutations
-  i = mod289(i); // Avoid truncation effects in permutation
-  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-                           + i.x + vec3(0.0, i1.x, 1.0 ));
-  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
-                          dot(x12.zw,x12.zw)), 0.0);
-  m = m*m; m = m*m;
-  // Gradients
-  vec3 x = 2.0 * fract(p * C.www) - 1.0;
-  vec3 h = abs(x) - 0.5;
-  vec3 a0 = x - floor(x + 0.5);
-  // Normalise gradients implicitly by scaling m
-  m *= 1.792843 - 0.853735 * ( a0*a0 + h*h );
-  // Compute final noise value at P
-  vec3 g;
-  g.x = a0.x * x0.x + h.x * x0.y;
-  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return 130.0 * dot(m, g);
-}
- 
-// 2D simplex noise end
 
 vec3 cmykPrintReference(vec2 st, vec3 shadeColor) {
-    float n = 0.1*snoise(st*200.0);  // Fractal noise
-    n += 0.05*snoise(st*400.0);      // with three
-    n += 0.025*snoise(st*800.0);     // octaves
-    vec3 white = vec3(n*0.2 + 0.97); // Paper color + noise
-    vec3 black = vec3(n + 0.1);      // Ink density + noise
+    vec3 white = vec3(0.97); // Paper coloroise
+    vec3 black = vec3(0.1);      // Ink densityoise
  
     // Perform a crude RGB-to-CMYK conversion
     vec4 cmyk;
@@ -270,32 +238,30 @@ vec3 cmykPrintReference(vec2 st, vec3 shadeColor) {
     // Distances to nearest point in angled grids of
     // (frequency x frequency) points over the unit square
     // K component: 45 degrees screen angle
-    vec2 Kst = frequency*mat2(0.707, -0.707, 0.707, 0.707)*st;
+    vec2 Kst = frequency * mat2(0.707, -0.707, 0.707, 0.707)*st;
     vec2 Kuv = 2.0*fract(Kst)-1.0;
-    float k = antiAliasedStep(0.0, sqrt(cmyk.w)-length(Kuv)+n);
+    float k = antiAliasedStep(0.0, sqrt(cmyk.w)-length(Kuv));
     // C component: 15 degrees screen angle
-    vec2 Cst = frequency*mat2(0.966, -0.259, 0.259, 0.966)*st;
+    vec2 Cst = frequency * mat2(0.966, -0.259, 0.259, 0.966)*st;
     vec2 Cuv = 2.0*fract(Cst)-1.0;
-    float c = antiAliasedStep(0.0, sqrt(cmyk.x)-length(Cuv)+n);
+    float c = antiAliasedStep(0.0, sqrt(cmyk.x)-length(Cuv));
     // M component: -15 degrees screen angle
-    vec2 Mst = frequency*mat2(0.966, 0.259, -0.259, 0.966)*st;
+    vec2 Mst = frequency * mat2(0.966, 0.259, -0.259, 0.966)*st;
     vec2 Muv = 2.0*fract(Mst)-1.0;
-    float m = antiAliasedStep(0.0, sqrt(cmyk.y)-length(Muv)+n);
+    float m = antiAliasedStep(0.0, sqrt(cmyk.y)-length(Muv));
     // Y component: 0 degrees screen angle
-    vec2 Yst = frequency*st;
+    vec2 Yst = frequency * st;
     vec2 Yuv = 2.0*fract(Yst)-1.0;
-    float y = antiAliasedStep(0.0, sqrt(cmyk.z)-length(Yuv)+n);
+    float y = antiAliasedStep(0.0, sqrt(cmyk.z)-length(Yuv));
  
     // CMY screen in RGB
-    vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y) + n;
+    vec3 rgbscreen = 1.0 - 0.9*vec3(c,m,y);
     // Blend in K for final color
-    return mix(rgbscreen, black, 0.85*k + 0.3*n);
+    return mix(rgbscreen, black, k);
 }
   
-  ////////////////
-  ////////////////
-
-  
+////////////////
+////////////////
 
 void main() {
   // uv, does not need aspect, this is implicit in the camera ray
@@ -336,8 +302,8 @@ void main() {
   vec2 st = _uv * vec2(aspect, 1.0);
 
   gl_FragColor = vec4(shadeColor, 1.0);
-  //gl_FragColor = vec4(monochromePrint(st, shadeColor), 1.0);
-  gl_FragColor = vec4(cmykPrintReference(st, shadeColor), 1.0);
+  gl_FragColor = vec4(monochromePrint(st, shadeColor), 1.0);
+  //gl_FragColor = vec4(cmykPrintReference(st, shadeColor), 1.0);
 }`;
 
 // this is the state interface for the component(as the uniforms are the sole thing that is updated)
