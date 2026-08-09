@@ -26,6 +26,7 @@ precision highp float;
 
 uniform float aspect;
 uniform float cameraRotationOffset;
+uniform float time;
 
 struct Light {
   vec3 color;
@@ -161,8 +162,9 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   // TODO: 
 
   float value = dot( vec3(0.2126, 0.7152, 0.0722), shadeColor );
+  value = shadeColor.g;
 
-  float radius = 1.0 * pow(1.0 - value, 0.5);
+  float radius = 1.0 * pow(1.0 - value, 0.5) * time;
 
   return mix(black, white, antiAliasedStep(radius, dist));
 }
@@ -310,6 +312,7 @@ void main() {
 interface MetaballUniforms {
   aspect: IUniform;
   cameraRotationOffset: IUniform;
+  time: IUniform;
 }
 
 let camera: Camera = undefined;
@@ -322,6 +325,7 @@ let aspect = 1;
 const uniforms: MetaballUniforms = {
   aspect: { value: aspect },
   cameraRotationOffset: { value: 306 },
+  time: { value: 0.0 },
 };
 
 const material = new THREE.ShaderMaterial({
@@ -361,6 +365,11 @@ export const SdfScene: React.FC = () => {
   };
 
   const animate = () => {
+    uniforms.time.value += 0.003;
+    if (uniforms.time.value >= 1.0) {
+      uniforms.time.value = 1.0;
+    }
+
     Object.entries(uniforms).forEach(([key, { value }]) => {
       material.uniforms[key].value = value;
     });
