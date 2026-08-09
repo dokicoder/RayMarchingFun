@@ -152,9 +152,9 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
 
 vec3 cmykPrint(vec2 st, vec3 shadeColor) {
   vec4 cmyk;
-  //cmyk.xyz = 1.0 - shadeColor;
-  //cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
-  //cmyk.xyz -= cmyk.w; // Subtract K equivalent from CMY
+  cmyk.xyz = 1.0 - shadeColor;
+  cmyk.w = min(cmyk.x, min(cmyk.y, cmyk.z)); // Create K
+  cmyk.xyz -= cmyk.w; // Subtract K equivalent from CMY
 
   cmyk.w = min( 1.0 - shadeColor.r, min(1.0 - shadeColor.g, 1.0 - shadeColor.b) );
   cmyk.r = (1.0 - shadeColor.r - cmyk.w)/(1.0 - cmyk.w);
@@ -178,12 +178,28 @@ vec3 cmykPrint(vec2 st, vec3 shadeColor) {
   float y = antiAliasedStep(0.0, sqrt(cmyk.z)-length(Yuv));
 
   vec3 rgbscreen = vec3(
-    (1.0 - c) * (1.0 - cmyk.w),
-    (1.0 - m) * (1.0 - cmyk.w),
-    (1.0 - y) * (1.0 - cmyk.w)
+    (1.0 - c) * (1.0 - k),
+    (1.0 - m) * (1.0 - k),
+    (1.0 - y) * (1.0 - k)
   );
 
-  return mix(rgbscreen, black,  0.2*k);
+  // CMYK colors are generally printed from lightest to darkest: Cyan, Magenta, Yellow, Black (CMYK) for standard digital and offset printing, or Yellow, Magenta, Cyan, Black (YMCK) for screen printing to keep light colors vivid.
+
+  vec3 color_cyan = vec3(0, 1.0, 1.0);
+  vec3 color_magenta = vec3(236.0/255.0, 0.0, 140.0/255.0);
+  vec3 color_yellow = vec3(1.0, 242.0/255.0, 0.0);
+  vec3 color_black = vec3(0.0);
+
+  vec3 resultColor = mix(vec3(1.0), color_cyan, c);
+  resultColor = mix(resultColor, color_magenta, m);
+  resultColor = mix(resultColor, color_yellow, y);
+    resultColor = mix(resultColor, color_black, k);
+
+  return resultColor;
+
+  //return vec3(1.0 - k);
+  //return vec3(c);
+  //return mix(vec3(1.0), color_black,  k);
 }
 
 void main() {
@@ -224,12 +240,9 @@ void main() {
 
   vec2 st = _uv * vec2(aspect, 1.0);
 
-
   gl_FragColor = vec4(shadeColor, 1.0);
   //gl_FragColor = vec4(monochromePrint(st, shadeColor), 1.0);
   gl_FragColor = vec4(cmykPrint(st, shadeColor), 1.0);
-    
-
 }`;
 
 // this is the state interface for the component(as the uniforms are the sole thing that is updated)
