@@ -3,8 +3,11 @@ import * as THREE from 'three';
 import { Scene, WebGLRenderer, Camera, Clock, IUniform } from 'three';
 import { Slider } from './Slider';
 
+// jut for
+const vert = (x) => x.toString();
+const frag = (y) => y.toString();
 
-const vertexShader: string = `
+const vertexShader: string = vert`
 precision highp float;
 
 out vec2 _uv;
@@ -16,17 +19,19 @@ void main() {
 }
 `;
 
-
-const fragmentShader = `
+const fragmentShader = frag`
 precision highp float;
 
 #define PI 3.1415926538
 
-#define NUM_LIGHTS 3
+#define DARK_MODE 1
 
 uniform float aspect;
 uniform float cameraRotationOffset;
-uniform float time;
+// used to fade in print scene, should be in [0,1] range. 0 - fully hidden, 1 - fully visible
+uniform float fadeInFactor;
+// resolution of print dots
+uniform float frequency;
 
 struct Light {
   vec3 color;
@@ -41,6 +46,9 @@ const float EPSILON = .01;
 const float STEP_SIZE = .999; // TODO: why not use 1 here?
 const float OUT_BOUNDS_DISTANCE = 1000.0;
 
+// TODO: let me pick these colors
+const vec3 white = vec3(1.0, 1.0, 1.0);
+const vec3 black = vec3(0.0, 0.0, 0.0);
 
 float sphereSdf(in vec3 p, in float r) {
     return length(p) - r;
@@ -143,14 +151,9 @@ float antiAliasedStep(float threshold, float value) {
   return smoothstep(threshold-afwidth, threshold+afwidth, value);
 }
 
-// Distance to nearest point in a grid of
-// (frequency x frequency) points over the unit square
-float frequency = 120.0;
-
 vec3 monochromePrint(vec2 st, vec3 shadeColor) {
-  // TODO: let me pick these colors
-  vec3 white = vec3(1.0, 1.0, 1.0);
-  vec3 black = vec3(0.0, 0.0, 0.0);
+  vec3 backgrondColor = white;
+  vec3 inkColor = black;
 
   st = mat2(0.707, -0.707, 0.707, 0.707) * st;
 
@@ -159,14 +162,19 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   
   // red chanel looks great as well
   // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
-  // TODO: 
-
   float value = dot( vec3(0.2126, 0.7152, 0.0722), shadeColor );
   value = shadeColor.g;
+#if(DARK_MODE == 1)
+  backgrondColor = black;
+  inkColor = white;
 
-  float radius = 1.0 * pow(1.0 - value, 0.5) * time;
+  value = 1.0 - value;
+#endif
 
-  return mix(black, white, antiAliasedStep(radius, dist));
+  float radius = pow(1.0 - value, 0.5);
+  radius = fadeInFactor * radius;
+
+  return mix(inkColor, backgrondColor, antiAliasedStep(radius, dist));
 }
 
 vec3 cmykPrint(vec2 st, vec3 shadeColor) {
@@ -223,7 +231,6 @@ vec3 cmykPrint(vec2 st, vec3 shadeColor) {
 
 ////////////////
 ////////////////
-
 
 vec3 cmykPrintReference(vec2 st, vec3 shadeColor) {
     vec3 white = vec3(0.97); // Paper coloroise
@@ -312,7 +319,8 @@ void main() {
 interface MetaballUniforms {
   aspect: IUniform;
   cameraRotationOffset: IUniform;
-  time: IUniform;
+  fadeInFactor: IUniform;
+  frequency: IUniform;
 }
 
 let camera: Camera = undefined;
@@ -325,7 +333,8 @@ let aspect = 1;
 const uniforms: MetaballUniforms = {
   aspect: { value: aspect },
   cameraRotationOffset: { value: 306 },
-  time: { value: 0.0 },
+  fadeInFactor: { value: 1.0 },
+  frequency: { value: 120.0 },
 };
 
 const material = new THREE.ShaderMaterial({
@@ -365,10 +374,12 @@ export const SdfScene: React.FC = () => {
   };
 
   const animate = () => {
-    uniforms.time.value += 0.003;
-    if (uniforms.time.value >= 1.0) {
-      uniforms.time.value = 1.0;
+    /*
+    uniforms.fadeInFactor.value += 0.01;
+    if (uniforms.fadeInFactor.value >= 1.0) {
+      uniforms.fadeInFactor.value = 1.0;
     }
+    */
 
     Object.entries(uniforms).forEach(([key, { value }]) => {
       material.uniforms[key].value = value;
