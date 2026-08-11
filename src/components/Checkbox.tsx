@@ -1,7 +1,7 @@
 import React from 'react';
 
 type Props = {
-  value: number;
+  value: boolean;
   update: (value: number) => void;
   label?: string;
   range?: number[];

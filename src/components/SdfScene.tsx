@@ -315,6 +315,7 @@ void main() {
   //gl_FragColor = vec4(cmykPrintReference(st, shadeColor), 1.0);
 }`;
 
+
 // this is the state interface for the component(as the uniforms are the sole thing that is updated)
 interface MetaballUniforms {
   aspect: IUniform;
@@ -433,11 +434,12 @@ export const SdfScene: React.FC = () => {
 
     // add renderer
     renderer = new WebGLRenderer({ antialias: false });
-    renderer.setClearColor('#880400');
+    renderer.setClearColor('#00ff00');
     renderer.setSize(width, height);
     canvasContainerRef.current.appendChild(renderer.domElement);
 
     scene.add(Plane());
+
     startRenderLoop();
 
     return () => {
