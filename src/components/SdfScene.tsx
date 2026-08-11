@@ -1,7 +1,8 @@
 import React, { useEffect, useReducer, useRef } from 'react';
 import * as THREE from 'three';
 import { Scene, WebGLRenderer, Camera, Clock, IUniform } from 'three';
-import { Slider } from './Slider';
+import { Slider } from './ui/slider';
+import { Switch } from './ui/switch';
 
 // jut for
 const vert = (x) => x.toString();
@@ -452,16 +453,22 @@ export const SdfScene: React.FC = () => {
     <>
       <div style={{ width: '1300px', height: '800px' }} ref={canvasContainerRef} />
       {/* TODO: debounce */}
-      <div style={{ width: '1300px' }}>
+      <div style={{ padding: 12, border: "3px dashed red", color: "white" }}>
         <Slider
+          className="mx-auto w-full max-w-xs p-4"
+
           id="cameraRotation"
           value={stateUniforms.cameraRotationOffset.value}
-          range={[0, 360]}
-          update={value => {
+          min={0}
+          max={360}
+
+          onValueChange={value => {
             dispatch({ type: 'cameraRotationOffset', value });
           }}
-          label="Camera rotation offset"
         />
+        Switch
+        <Switch />
+
       </div>
     </>
   );
