@@ -5,6 +5,7 @@ import type { IUniform } from 'three';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import { useTheme } from './theme-provider';
 
 // jut for
 const vert = (x) => x.toString();
@@ -166,7 +167,7 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   // red chanel looks great as well
   // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
   float value = dot( vec3(0.2126, 0.7152, 0.0722), shadeColor );
-  value = shadeColor.g;
+  //value = shadeColor.r;
 #if(DARK_MODE == 1)
   backgrondColor = black;
   inkColor = white;
@@ -174,7 +175,7 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
   value = 1.0 - value;
 #endif
 
-  float radius = pow(1.0 - value, 0.5);
+  float radius = sqrt(1.0 - value);
   radius = fadeInFactor * radius;
 
   return mix(inkColor, backgrondColor, antiAliasedStep(radius, dist));
@@ -334,12 +335,12 @@ let frameId: number = undefined;
 
 let aspect = 1;
 
-const uniforms: MetaballUniforms = {
+let uniforms = {
   aspect: { value: aspect },
   cameraRotationOffset: { value: 306 },
   fadeInFactor: { value: 1.0 },
   frequency: { value: 120.0 },
-};
+} satisfies MetaballUniforms;
 
 const material = new THREE.ShaderMaterial({
   uniforms,
@@ -347,10 +348,7 @@ const material = new THREE.ShaderMaterial({
   vertexShader,
 });
 
-interface Action {
-  type: keyof MetaballUniforms;
-  value: any;
-}
+type UpdatedUniforms = Partial<MetaballUniforms>
 
 const v0 = [-1.0, -1.0, 1.0];
 const uv0 = [0.0, 0.0];
@@ -361,7 +359,7 @@ const uv2 = [1.0, 1.0];
 const v3 = [-1.0, 1.0, 1.0];
 const uv3 = [0.0, 1.0];
 
-const Plane = () => {
+const PlaneMesh = () => {
   const vertices = new Float32Array([v0, v1, v2, v2, v3, v0].flat());
   const uvs = new Float32Array([uv0, uv1, uv2, uv2, uv3, uv0].flat());
 
@@ -377,42 +375,40 @@ export const SdfScene: React.FC = () => {
     renderer.render(scene, camera);
   };
 
-  const animate = () => {
-    /*
-    uniforms.fadeInFactor.value += 0.01;
-    if (uniforms.fadeInFactor.value >= 1.0) {
-      uniforms.fadeInFactor.value = 1.0;
-    }
-    */
+  const reducer = (state: MetaballUniforms, updatedUniforms: UpdatedUniforms) => {
+    // we need to update the uniforms object as well as the state copy to keep animate(bot in react state)
+    // and render(in react state) in sync
+    // if we try to save everything in react store, THREE.js will still display the initial state because animate() operates on the initial instance of the state object
 
-    Object.entries(uniforms).forEach(([key, { value }]) => {
+    const newState = { ...state, ...updatedUniforms };
+
+    Object.entries(newState).forEach(([key, { value }]) => {
       material.uniforms[key].value = value;
     });
 
+    return newState;
+  };
+
+  const [uniformsState, dispatch] = useReducer(reducer, uniforms);
+
+  const animate = () => {
     renderScene();
+
     frameId = requestAnimationFrame(animate);
   };
 
   const startRenderLoop = () => {
-    if (!frameId) {
+    if (frameId === -1) {
       frameId = requestAnimationFrame(animate);
     }
   };
 
   const stop = () => {
     cancelAnimationFrame(frameId);
-    frameId = undefined;
+    frameId = -1;
   };
 
-  const reducer = (state: MetaballUniforms, { type, value }: Action) => {
-    // we need to update the uniforms object as well as the state copy to keep animate(bot in react state)
-    // and render(in react state) in sync
-    // if we try to save everything in react store, THREE.js will still display the initial state because animate() operates on the initial instance of the state object
-    uniforms[type].value = value;
-    return { ...state, [type]: { value } };
-  };
 
-  const [stateUniforms, dispatch] = useReducer(reducer, uniforms);
 
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
@@ -441,7 +437,7 @@ export const SdfScene: React.FC = () => {
     renderer.setSize(width, height);
     canvasContainerRef.current.appendChild(renderer.domElement);
 
-    scene.add(Plane());
+    scene.add(PlaneMesh());
 
     startRenderLoop();
 
@@ -451,11 +447,13 @@ export const SdfScene: React.FC = () => {
     };
   }, []);
 
+  const { theme, setTheme } = useTheme()
+
   return (
     <>
       <div style={{ width: '1300px', height: '800px' }} ref={canvasContainerRef} />
       {/* TODO: debounce */}
-      <div style={{ padding: 12, border: "3px dashed red", color: "white" }}>
+      <div className="p-2 border-2 border-dashed d-flex gap-2 flex flex-col gap-2">
 
         <div className="flex items-center gap-2">
           <Label htmlFor="dark-mode">Rotation</Label>
@@ -463,18 +461,23 @@ export const SdfScene: React.FC = () => {
             className="max-w-xs"
 
             id="cameraRotation"
-            value={stateUniforms.cameraRotationOffset.value}
+            value={uniformsState.cameraRotationOffset.value}
             min={0}
             max={360}
 
             onValueChange={value => {
-              dispatch({ type: 'cameraRotationOffset', value });
+              dispatch({ cameraRotationOffset: { value } });
             }}
           />
         </div>
         <div className="flex items-center gap-2">
-          <Label htmlFor="dark-mode">Dark Mode</Label>
-          <Switch id="dark-mode" />
+          <Label htmlFor="dark-mode">{theme === "dark" ? "Dark" : "Light"}</Label>
+          <Switch id="dark-mode" checked={theme === "dark"} onCheckedChange={() => {
+            const newTheme = theme === "dark" ? "light" : "dark";
+
+            setTheme(newTheme);
+            document.body.style.background = newTheme === "dark" ? "black" : "white";
+          }} />
         </div>
 
 

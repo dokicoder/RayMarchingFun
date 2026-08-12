@@ -4,7 +4,7 @@ import * as React from "react"
 type Theme = "dark" | "light" | "system"
 type ResolvedTheme = "dark" | "light"
 
-type ThemeProviderProps = {
+type Props = {
   children: React.ReactNode
   defaultTheme?: Theme
   storageKey?: string
@@ -83,7 +83,7 @@ export function ThemeProvider({
   storageKey = "theme",
   disableTransitionOnChange = true,
   ...props
-}: ThemeProviderProps) {
+}: Props) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
     const storedTheme = localStorage.getItem(storageKey)
     if (isTheme(storedTheme)) {
