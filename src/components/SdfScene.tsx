@@ -28,14 +28,13 @@ precision highp float;
 
 #define PI 3.1415926538
 
-#define DARK_MODE 1
-
 uniform float aspect;
 uniform float cameraRotationOffset;
 // used to fade in print scene, should be in [0,1] range. 0 - fully hidden, 1 - fully visible
 uniform float fadeInFactor;
 // resolution of print dots
 uniform float frequency;
+uniform int darkMode;
 
 struct Light {
   vec3 color;
@@ -139,6 +138,7 @@ vec3 shade(vec3 surfacePos) {
   {
 		vec3 lightDir = normalize(lights[i].position - surfacePos);
     vec3 normal = gradientNormal( surfacePos );
+
     color += diffuse(lightDir, normal, surfaceColor, lights[i].color);
     color += specular(lightDir, normal, viewDir);
     color = clamp(color, vec3(0.0), vec3(1.0));
@@ -156,29 +156,32 @@ float antiAliasedStep(float threshold, float value) {
 }
 
 vec3 monochromePrint(vec2 st, vec3 shadeColor) {
-  vec3 backgrondColor = white;
+  vec3 backgroundColor = white;
   vec3 inkColor = black;
 
   st = mat2(0.707, -0.707, 0.707, 0.707) * st;
 
   vec2 nearest = 2.0 * fract(frequency * st) - 1.0;
+
+  // TODO: get rid of "half circles on outside"
   float dist = length(nearest);
   
   // red chanel looks great as well
   // TODO: black is not really black because the paint dots do not fill the space completely, maybe we can tweak that
   float value = dot( vec3(0.2126, 0.7152, 0.0722), shadeColor );
   //value = shadeColor.r;
-#if(DARK_MODE == 1)
-  backgrondColor = black;
-  inkColor = white;
+  if(darkMode == 1) {
+    value = 1.0 - value;
+    inkColor = white;
+    
+    backgroundColor = black;
+  }
 
-  value = 1.0 - value;
-#endif
-
+  // TODO: how to choose the term such that black is full black and white is white
   float radius = sqrt(1.0 - value);
   radius = fadeInFactor * radius;
 
-  return mix(inkColor, backgrondColor, antiAliasedStep(radius, dist));
+  return mix(inkColor, backgroundColor, antiAliasedStep(radius, dist));
 }
 
 vec3 cmykPrint(vec2 st, vec3 shadeColor) {
@@ -319,13 +322,13 @@ void main() {
   //gl_FragColor = vec4(cmykPrintReference(st, shadeColor), 1.0);
 }`;
 
-
 // this is the state interface for the component(as the uniforms are the sole thing that is updated)
 interface MetaballUniforms {
   aspect: IUniform;
   cameraRotationOffset: IUniform;
   fadeInFactor: IUniform;
   frequency: IUniform;
+  darkMode: IUniform;
 }
 
 let camera: Camera = undefined;
@@ -340,7 +343,11 @@ let uniforms = {
   cameraRotationOffset: { value: 306 },
   fadeInFactor: { value: 1.0 },
   frequency: { value: 120.0 },
+  darkMode: { value: 0 }
 } satisfies MetaballUniforms;
+
+
+let fadeInFactor = 0;
 
 const material = new THREE.ShaderMaterial({
   uniforms,
@@ -348,15 +355,24 @@ const material = new THREE.ShaderMaterial({
   vertexShader,
 });
 
-type UpdatedUniforms = Partial<MetaballUniforms>
+type UpdatedUniforms = Partial<MetaballUniforms>;
 
-const v0 = [-1.0, -1.0, 1.0];
+function updateMaterialUniformValues(updatedUniforms: UpdatedUniforms) {
+  Object.entries(updatedUniforms).forEach(([key, { value }]) => {
+    material.uniforms[key].value = value;
+  });
+}
+
+// TODO: why this value, why not 0.0 or something else?
+const zValue = 1.0;
+
+const v0 = [-1.0, -1.0, zValue];
 const uv0 = [0.0, 0.0];
-const v1 = [1.0, -1.0, 1.0];
+const v1 = [1.0, -1.0, zValue];
 const uv1 = [1.0, 0.0];
-const v2 = [1.0, 1.0, 1.0];
+const v2 = [1.0, 1.0, zValue];
 const uv2 = [1.0, 1.0];
-const v3 = [-1.0, 1.0, 1.0];
+const v3 = [-1.0, 1.0, zValue];
 const uv3 = [0.0, 1.0];
 
 const PlaneMesh = () => {
@@ -381,10 +397,7 @@ export const SdfScene: React.FC = () => {
     // if we try to save everything in react store, THREE.js will still display the initial state because animate() operates on the initial instance of the state object
 
     const newState = { ...state, ...updatedUniforms };
-
-    Object.entries(newState).forEach(([key, { value }]) => {
-      material.uniforms[key].value = value;
-    });
+    updateMaterialUniformValues(updatedUniforms);
 
     return newState;
   };
@@ -393,6 +406,10 @@ export const SdfScene: React.FC = () => {
 
   const animate = () => {
     renderScene();
+
+    //fadeInFactor = Math.min(fadeInFactor + 0.01, 1);
+    
+    //updateMaterialUniformValues({ fadeInFactor: { value: fadeInFactor } });
 
     frameId = requestAnimationFrame(animate);
   };
@@ -403,7 +420,7 @@ export const SdfScene: React.FC = () => {
     }
   };
 
-  const stop = () => {
+  const stopRenderLoop = () => {
     cancelAnimationFrame(frameId);
     frameId = -1;
   };
@@ -435,14 +452,18 @@ export const SdfScene: React.FC = () => {
     renderer = new WebGLRenderer({ antialias: false });
     renderer.setClearColor('#00ff00');
     renderer.setSize(width, height);
-    canvasContainerRef.current.appendChild(renderer.domElement);
+
+    const canvas = renderer.domElement;
+    canvas.classList.add("rounded-m", "border-2");
+
+    canvasContainerRef.current.appendChild(canvas);
 
     scene.add(PlaneMesh());
 
     startRenderLoop();
 
     return () => {
-      stop();
+      stopRenderLoop();
       if (canvasContainerRef.current) canvasContainerRef.current.removeChild(renderer.domElement);
     };
   }, []);
@@ -451,7 +472,7 @@ export const SdfScene: React.FC = () => {
 
   return (
     <>
-      <div style={{ width: '1300px', height: '800px' }} ref={canvasContainerRef} />
+      <div style={{ width: '1300px', height: '800px' }} className="p-2" ref={canvasContainerRef} />
       {/* TODO: debounce */}
       <div className="p-2 border-2 border-dashed d-flex gap-2 flex flex-col gap-2">
 
@@ -476,7 +497,7 @@ export const SdfScene: React.FC = () => {
             const newTheme = theme === "dark" ? "light" : "dark";
 
             setTheme(newTheme);
-            document.body.style.background = newTheme === "dark" ? "black" : "white";
+            updateMaterialUniformValues({ darkMode: { value: newTheme === "dark" ? 1 : 0} })
           }} />
         </div>
 
