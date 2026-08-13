@@ -8,13 +8,13 @@ import { Label } from './ui/label';
 import { useTheme } from './theme-provider';
 
 // jut for
-const vert = (x) => x.toString();
-const frag = (y) => y.toString();
+const vert = (x: any) => x.toString();
+const frag = (y: any) => y.toString();
 
 const timer = new Timer();
 timer.connect( document ); // use Page Visibility API
 
-const FADE_SPEED = 1.2;
+const FADE_SPEED = 1.8;
 
 const clamp = (val: number, min: number, max: number) => {
   return Math.max(min, Math.min(max, val));
@@ -44,6 +44,9 @@ uniform float fadeInFactor;
 // resolution of print dots
 uniform float frequency;
 uniform int darkMode;
+// TODO: let me pick these colors
+uniform vec3 white;
+uniform vec3 black;
 
 struct Light {
   vec3 color;
@@ -58,9 +61,6 @@ const float EPSILON = .01;
 const float STEP_SIZE = .999; // TODO: why not use 1 here?
 const float OUT_BOUNDS_DISTANCE = 1000.0;
 
-// TODO: let me pick these colors
-const vec3 white = vec3(1.0, 1.0, 1.0);
-const vec3 black = vec3(0.0, 0.0, 0.0);
 
 float sphereSdf(in vec3 p, in float r) {
     return length(p) - r;
@@ -338,6 +338,8 @@ interface MetaballUniforms {
   fadeInFactor: IUniform;
   frequency: IUniform;
   darkMode: IUniform;
+  white: IUniform;
+  black: IUniform;
 }
 
 let camera: THREE.PerspectiveCamera = undefined;
@@ -351,7 +353,9 @@ let uniforms = {
   cameraRotationOffset: { value: 306 },
   fadeInFactor: { value: 1.0 },
   frequency: { value: 120.0 },
-  darkMode: { value: 0 }
+  darkMode: { value: 0 },
+  white: { value: new THREE.Color("#ffffff") },
+  black: { value: new THREE.Color("#0a0a0a")},
 } satisfies MetaballUniforms;
 
 
@@ -516,6 +520,22 @@ export const SdfScene: React.FC = () => {
 
             onValueChange={value => {
               dispatch({ cameraRotationOffset: { value } });
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="dark-mode">Frequency {uniformsState.frequency.value}</Label>
+          <Slider
+            className="max-w-xs"
+
+            id="cameraRotation"
+            value={uniformsState.frequency.value}
+            min={1}
+            max={250}
+            step={1}
+
+            onValueChange={value => {
+              dispatch({ frequency: { value } });
             }}
           />
         </div>
