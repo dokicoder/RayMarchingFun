@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer, useRef, useLayoutEffect } from 'react';
 import * as THREE from 'three';
-import { Scene, WebGLRenderer, Camera, Timer } from 'three';
+import { Scene, WebGLRenderer, Timer } from 'three';
 import type { IUniform } from 'three';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
@@ -340,7 +340,7 @@ interface MetaballUniforms {
   darkMode: IUniform;
 }
 
-let camera: Camera = undefined;
+let camera: THREE.PerspectiveCamera = undefined;
 let scene: THREE.Scene = undefined;
 let renderer: WebGLRenderer = undefined;
 
@@ -445,8 +445,6 @@ export const SdfScene: React.FC = () => {
     renderScene();
   });
 
-
-
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -460,13 +458,15 @@ export const SdfScene: React.FC = () => {
       canvasContainerRef.current.removeChild(renderer.domElement);
     }
 
-    uniforms.aspect.value = width / height;
-
     // add scene
     scene = new Scene();
 
     // TODO: not needed, or at least make orthographic
     camera = new THREE.PerspectiveCamera(75, uniforms.aspect.value, 0.1, 1000);
+
+    uniforms.aspect.value = width / height;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
 
     // add renderer
     renderer = new WebGLRenderer({ antialias: false });
@@ -475,18 +475,32 @@ export const SdfScene: React.FC = () => {
     renderer.setSize(width, height);
 
     const canvas = renderer.domElement;
+
+    canvas.style.width = "100%"
+    canvas.style.height = "100%"
     canvas.classList.add("rounded-m", "border-2");
 
     canvasContainerRef.current.appendChild(canvas);
 
     scene.add(PlaneMesh());
+
+    const observer = new ResizeObserver(() => {
+      const { width, height } = canvas.getBoundingClientRect();
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+
+      updateMaterialUniformValues({ aspect: { value: width / height } });
+    })
+
+    observer.observe(canvas);
   }, []);
 
   const { theme, setTheme } = useTheme()
 
   return (
     <>
-      <div style={{ width: '1300px', height: '800px' }} className="p-2" ref={canvasContainerRef} />
+      <div style={{ height: '800px', width: "100%" }} className="p-2" ref={canvasContainerRef} />
       {/* TODO: debounce */}
       <div className="p-2 border-2 border-dashed d-flex gap-2 flex flex-col gap-2">
 
