@@ -1,6 +1,6 @@
-import React, { useEffect, useReducer, useRef } from 'react';
+import React, { useState, useEffect, useReducer, useRef, useLayoutEffect } from 'react';
 import * as THREE from 'three';
-import { Scene, WebGLRenderer, Camera } from 'three';
+import { Scene, WebGLRenderer, Camera, Timer } from 'three';
 import type { IUniform } from 'three';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
@@ -10,6 +10,15 @@ import { useTheme } from './theme-provider';
 // jut for
 const vert = (x) => x.toString();
 const frag = (y) => y.toString();
+
+const timer = new Timer();
+timer.connect( document ); // use Page Visibility API
+
+const FADE_SPEED = 1.2;
+
+const clamp = (val: number, min: number, max: number) => {
+  return Math.max(min, Math.min(max, val));
+}
 
 const vertexShader: string = vert`
 precision highp float;
@@ -334,7 +343,6 @@ interface MetaballUniforms {
 let camera: Camera = undefined;
 let scene: THREE.Scene = undefined;
 let renderer: WebGLRenderer = undefined;
-let frameId: number = undefined;
 
 let aspect = 1;
 
@@ -386,6 +394,26 @@ const PlaneMesh = () => {
   return new THREE.Mesh(geometry, material);
 };
 
+function useAnimationFrame(callback: (timestamp: number) => void) {
+  const callbackRef = useRef(callback);
+
+  // no dep array — runs after *every* render, so the box always holds the newest closure
+  useLayoutEffect(() => {
+    callbackRef.current = callback;
+  });
+
+  useEffect(() => {
+    let frameId = -1;
+    const tick = (timestamp: number) => {
+      callbackRef.current(timestamp);
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, []); // loop starts once, is never torn down mid-animation
+}
+
 export const SdfScene: React.FC = () => {
   const renderScene = () => {
     renderer.render(scene, camera);
@@ -402,28 +430,20 @@ export const SdfScene: React.FC = () => {
     return newState;
   };
 
+  const [fade, setFade] = useState<number>(1);
+
   const [uniformsState, dispatch] = useReducer(reducer, uniforms);
 
-  const animate = () => {
+  useAnimationFrame( (timestamp: number) => {
+    timer.update(timestamp);
+
+    const deltaTime = timer.getDelta();
+    fadeInFactor = clamp(fadeInFactor + deltaTime * FADE_SPEED * fade, 0, 1);
+
+    updateMaterialUniformValues({ fadeInFactor: { value: fadeInFactor } });
+
     renderScene();
-
-    //fadeInFactor = Math.min(fadeInFactor + 0.01, 1);
-    
-    //updateMaterialUniformValues({ fadeInFactor: { value: fadeInFactor } });
-
-    frameId = requestAnimationFrame(animate);
-  };
-
-  const startRenderLoop = () => {
-    if (frameId === -1) {
-      frameId = requestAnimationFrame(animate);
-    }
-  };
-
-  const stopRenderLoop = () => {
-    cancelAnimationFrame(frameId);
-    frameId = -1;
-  };
+  });
 
 
 
@@ -450,6 +470,7 @@ export const SdfScene: React.FC = () => {
 
     // add renderer
     renderer = new WebGLRenderer({ antialias: false });
+    renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setClearColor('#00ff00');
     renderer.setSize(width, height);
 
@@ -459,13 +480,6 @@ export const SdfScene: React.FC = () => {
     canvasContainerRef.current.appendChild(canvas);
 
     scene.add(PlaneMesh());
-
-    startRenderLoop();
-
-    return () => {
-      stopRenderLoop();
-      if (canvasContainerRef.current) canvasContainerRef.current.removeChild(renderer.domElement);
-    };
   }, []);
 
   const { theme, setTheme } = useTheme()
@@ -498,6 +512,12 @@ export const SdfScene: React.FC = () => {
 
             setTheme(newTheme);
             updateMaterialUniformValues({ darkMode: { value: newTheme === "dark" ? 1 : 0} })
+          }} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="dark-mode">{fade === -1 ? "Fade out" : "Fade in"}</Label>
+          <Switch id="dark-mode" checked={fade === 1 } onCheckedChange={() => {
+            setFade(fade === 1 ? -1 : 1)
           }} />
         </div>
 
