@@ -7,7 +7,7 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { useTheme } from './theme-provider';
 
-// jut for
+// jut for syntax highlighting
 const vert = (x: any) => x.toString();
 const frag = (y: any) => y.toString();
 
@@ -43,6 +43,7 @@ uniform float cameraRotationOffset;
 uniform float fadeInFactor;
 // resolution of print dots
 uniform float frequency;
+uniform float time;
 uniform int darkMode;
 // TODO: let me pick these colors
 uniform vec3 white;
@@ -157,9 +158,9 @@ vec3 shade(vec3 surfacePos) {
 }
 
 // performs smoothstep instead of step, calculating the kernel size
-// using texture coordinates of screen-space render squad, thereby antialiasing the step
+// using texture coordinates of screen-space render squad, thereby anti-aliasing the step
 float antiAliasedStep(float threshold, float value) {
-  float afwidth = 0.7 * length( vec2(dFdx(value), dFdy(value)) );
+  float afwidth = 0.8 * length( vec2(dFdx(value), dFdy(value)) );
  
   return smoothstep(threshold-afwidth, threshold+afwidth, value);
 }
@@ -186,9 +187,11 @@ vec3 monochromePrint(vec2 st, vec3 shadeColor) {
     backgroundColor = black;
   }
 
+  float fade = sin(8.0 * (time + _uv.y * 5.0));
+
   // TODO: how to choose the term such that black is full black and white is white
   float radius = sqrt(1.0 - value);
-  radius = fadeInFactor * radius;
+  radius = fade * radius;
 
   return mix(inkColor, backgroundColor, antiAliasedStep(radius, dist));
 }
@@ -331,22 +334,13 @@ void main() {
   //gl_FragColor = vec4(cmykPrintReference(st, shadeColor), 1.0);
 }`;
 
-// this is the state interface for the component(as the uniforms are the sole thing that is updated)
-interface MetaballUniforms {
-  aspect: IUniform;
-  cameraRotationOffset: IUniform;
-  fadeInFactor: IUniform;
-  frequency: IUniform;
-  darkMode: IUniform;
-  white: IUniform;
-  black: IUniform;
-}
 
 let camera: THREE.PerspectiveCamera = undefined;
 let scene: THREE.Scene = undefined;
 let renderer: WebGLRenderer = undefined;
 
 let aspect = 1;
+let time = 0;
 
 let uniforms = {
   aspect: { value: aspect },
@@ -356,7 +350,10 @@ let uniforms = {
   darkMode: { value: 0 },
   white: { value: new THREE.Color("#ffffff") },
   black: { value: new THREE.Color("#0a0a0a")},
-} satisfies MetaballUniforms;
+  time: { value: time }
+} satisfies Record<string, IUniform>;
+
+type MetaballUniforms = typeof uniforms;
 
 
 let fadeInFactor = 0;
@@ -443,8 +440,12 @@ export const SdfScene: React.FC = () => {
 
     const deltaTime = timer.getDelta();
     fadeInFactor = clamp(fadeInFactor + deltaTime * FADE_SPEED * fade, 0, 1);
+    time += deltaTime;
 
-    updateMaterialUniformValues({ fadeInFactor: { value: fadeInFactor } });
+    updateMaterialUniformValues({ 
+      fadeInFactor: { value: fadeInFactor }, 
+      time: {  value: time } ,
+    });
 
     renderScene();
   });
